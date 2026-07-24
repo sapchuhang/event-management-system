@@ -1,0 +1,22 @@
+# OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# IDEs and editors
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# PHP / Web environment logs
+*.log
+error_log
+
+# Uploads directory - keep the directory structure but ignore user-uploaded files
+/uploads/**/*
+!/uploads/**/.gitkeep

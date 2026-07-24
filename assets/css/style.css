@@ -1,0 +1,653 @@
+/* assets/css/style.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* ============================================================
+   Premium Modern Teal Palette Theme
+   ============================================================ */
+
+:root {
+    /* Custom palette - Modern Premium Teal Theme */
+    --primary:       #1e4644;
+    --primary-hover: #0d2423;
+    --secondary:     #2b7370;
+    --accent:        #38b2ac;
+    --dark:          #0b1a19;
+    --light:         #edfdfc;
+    --white:         #ffffff;
+    --bg:            #f8fafc; /* Modern clean light slate background */
+    --glass-bg:      rgba(255, 255, 255, 0.75);
+    --glass-border:  rgba(226, 232, 240, 0.8);
+    --card-shadow:   0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+    --hover-shadow:  0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.03);
+
+    /* Semantic colors for modern metrics cards */
+    --card-blue-bg:    rgba(59, 130, 246, 0.08);
+    --card-blue-fg:    #2563eb;
+    --card-green-bg:   rgba(16, 185, 129, 0.08);
+    --card-green-fg:   #059669;
+    --card-amber-bg:   rgba(245, 158, 11, 0.08);
+    --card-amber-fg:   #d97706;
+
+    /* Override Bootstrap 5 CSS variables */
+    --bs-primary:             #1e4644;
+    --bs-primary-rgb:         30, 70, 68;
+    --bs-primary-text-emphasis: #0d2423;
+    --bs-primary-bg-subtle:   #edfdfc;
+    --bs-primary-border-subtle: #2b7370;
+
+    --bs-secondary:           #2b7370;
+    --bs-secondary-rgb:       43, 115, 112;
+    --bs-secondary-text-emphasis: #1e4644;
+    --bs-secondary-bg-subtle: #edfdfc;
+    --bs-secondary-border-subtle: #2b7370;
+
+    --bs-link-color:          #1e4644;
+    --bs-link-hover-color:    #0d2423;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: #334155;
+    margin: 0;
+    min-height: 100vh;
+}
+
+/* Glassmorphism utility */
+.glass-panel {
+    background: var(--white);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    border-radius: 16px;
+    box-shadow: var(--card-shadow);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-panel:hover {
+    box-shadow: var(--hover-shadow);
+}
+
+/* Sidebar */
+.sidebar {
+    background: linear-gradient(180deg, #102e2c 0%, #071716 100%);
+    color: var(--white);
+    min-height: 100vh;
+    padding: 2rem 1.2rem;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-brand-logo {
+    transition: transform 0.3s ease;
+}
+.sidebar-brand:hover .sidebar-brand-logo {
+    transform: scale(1.08) rotate(5deg);
+}
+
+.sidebar-divider {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-nav {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.nav-link-custom {
+    color: rgba(255, 255, 255, 0.7) !important;
+    text-decoration: none;
+    padding: 0.85rem 1.1rem;
+    display: flex;
+    align-items: center;
+    border-radius: 10px;
+    font-weight: 500;
+    font-size: 0.92rem;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.nav-link-custom i {
+    font-size: 1.1rem;
+    width: 24px;
+    transition: transform 0.25s ease;
+}
+
+.nav-link-custom:hover {
+    color: var(--white) !important;
+    background: rgba(255, 255, 255, 0.06);
+    padding-left: 1.3rem;
+}
+
+.nav-link-custom:hover i {
+    transform: scale(1.1);
+}
+
+.nav-link-custom.active {
+    color: var(--white) !important;
+    background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
+    box-shadow: 0 4px 15px rgba(43, 115, 112, 0.3);
+}
+
+.nav-link-custom.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 20%;
+    height: 60%;
+    width: 4px;
+    background: var(--accent);
+    border-radius: 0 4px 4px 0;
+}
+
+.nav-link-custom.text-danger-custom {
+    color: #fc8181 !important;
+    margin-top: auto;
+    border: 1px solid rgba(252, 129, 129, 0.15);
+    background: rgba(252, 129, 129, 0.04);
+}
+
+.nav-link-custom.text-danger-custom:hover {
+    color: #fff !important;
+    background: #e53e3e !important;
+    box-shadow: 0 4px 15px rgba(229, 62, 62, 0.35);
+}
+
+/* Content Area */
+.main-content {
+    padding: 2rem;
+}
+
+/* Premium Buttons */
+.btn-primary-custom {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 10px;
+    font-weight: 500;
+    box-shadow: 0 4px 14px rgba(30, 70, 68, 0.25);
+    transition: all 0.25s ease;
+}
+
+.btn-primary-custom:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(30, 70, 68, 0.4);
+    color: white;
+}
+
+/* Cards */
+.stat-card {
+    border: none !important;
+    background: var(--white);
+    border-radius: 16px;
+    box-shadow: var(--card-shadow);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--hover-shadow);
+}
+
+/* Metric icons styling */
+.metric-icon-wrapper {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover .metric-icon-wrapper {
+    transform: scale(1.1) rotate(3deg);
+}
+
+/* Quick Actions */
+.quick-action-btn {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background: var(--white);
+    border: 1px solid rgba(226, 232, 240, 0.7);
+    border-radius: 12px;
+    text-decoration: none;
+    color: var(--primary);
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.quick-action-btn:hover {
+    background: var(--light);
+    border-color: var(--accent);
+    color: var(--secondary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(43, 115, 112, 0.1);
+}
+
+.quick-action-btn i {
+    font-size: 1.25rem;
+    margin-right: 0.75rem;
+}
+
+/* Member Initial Avatars */
+.avatar-initial {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
+    color: white;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(43, 115, 112, 0.2);
+}
+
+/* Activity Item spacing */
+.activity-item {
+    padding: 1rem 0;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background-color 0.2s ease;
+}
+
+.activity-item:last-child {
+    border-bottom: none;
+}
+
+.activity-item:hover {
+    background-color: #f8fafc;
+}
+
+/* Login Page specifically */
+.login-body {
+    background: linear-gradient(135deg, #0D2426 0%, #235857 60%, #3B8A7F 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+}
+
+.login-card {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(211, 217, 212, 0.45);
+    border-radius: 20px;
+    padding: 2.25rem 2rem;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+    color: white;
+}
+.login-card .form-control {
+    background: rgba(255,255,255,0.92);
+    border: none;
+    border-radius: 8px;
+    padding: 12px;
+}
+.login-card .form-control:focus {
+    box-shadow: 0 0 0 0.25rem rgba(59, 138, 127, 0.40);
+}
+.login-card h2 {
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.20);
+}
+
+/* Global Print Styles */
+@media print {
+    @page {
+        size: A4;
+        margin: 15mm;
+    }
+    
+    body {
+        background: white !important;
+        color: black !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        font-size: 11pt;
+    }
+    
+    .sidebar, .navbar, .btn, form, .alert { 
+        display: none !important; 
+    }
+    
+    .col-md-10 { 
+        width: 100% !important; 
+        margin: 0 !important; 
+        padding: 0 !important; 
+    }
+    
+    .main-content {
+        padding: 0 !important;
+    }
+    
+    .glass-panel { 
+        box-shadow: none !important; 
+        border: none !important; 
+        background: transparent !important;
+        padding: 0 !important;
+    }
+    
+    .table-responsive {
+        overflow: visible !important;
+    }
+    
+    .table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+    
+    .table th, .table td {
+        border: 1px solid #ddd !important;
+        padding: 8px !important;
+        page-break-inside: avoid;
+    }
+    
+    .badge {
+        border: 1px solid #000;
+        color: #000 !important;
+        background: #fff !important;
+    }
+    .badge.bg-success {
+        background-color: #d1e7dd !important;
+    }
+    .badge.bg-danger {
+        background-color: #f8d7da !important;
+    }
+}
+
+/* Nepali Date Picker Custom Styles */
+#ndp-nepali-box {
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(13, 36, 38, 0.2) !important;
+    font-family: 'Inter', sans-serif !important;
+    overflow: hidden;
+    z-index: 9999 !important;
+}
+
+#ndp-nepali-box .ndp-header {
+    background-color: var(--primary) !important;
+    color: white !important;
+    border-bottom: none !important;
+    padding: 10px;
+}
+
+#ndp-nepali-box .ndp-header .ndp-corner-all {
+    color: white !important;
+}
+
+#ndp-nepali-box table.ndp-table {
+    border-collapse: separate !important;
+    border-spacing: 4px !important;
+    margin: 8px !important;
+}
+
+#ndp-nepali-box table.ndp-table th {
+    color: var(--primary) !important;
+    font-weight: 600;
+}
+
+#ndp-nepali-box table.ndp-table td {
+    border-radius: 6px !important;
+    transition: all 0.2s ease;
+    padding: 6px !important;
+}
+
+#ndp-nepali-box table.ndp-table td:hover {
+    background-color: var(--secondary) !important;
+    color: white !important;
+}
+
+#ndp-nepali-box table.ndp-table td.ndp-current {
+    background-color: var(--light) !important;
+    color: var(--dark) !important;
+    font-weight: bold;
+    border: 1px solid var(--secondary) !important;
+}
+
+#ndp-nepali-box table.ndp-table td.ndp-selected {
+    background-color: var(--primary) !important;
+    color: white !important;
+    font-weight: bold;
+}
+
+/* ── Modern Vertical Timeline Layout ── */
+.timeline {
+    position: relative;
+    padding-left: 3rem;
+    margin-bottom: 2rem;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 15px;
+    width: 2px;
+    background: rgba(43, 115, 112, 0.15); /* matching --primary opacity */
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 2.5rem;
+}
+
+.timeline-item:last-child {
+    margin-bottom: 0;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -3rem;
+    top: 4px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    font-size: 0.85rem;
+    z-index: 2;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.timeline-time {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--secondary);
+    letter-spacing: 0.5px;
+    display: inline-block;
+    padding: 2px 10px;
+    background: rgba(35, 88, 87, 0.08); /* --secondary opacity */
+    border-radius: 20px;
+    margin-bottom: 0.5rem;
+}
+
+.timeline-card {
+    background: var(--white);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(13, 36, 38, 0.03);
+    transition: all 0.25s ease;
+}
+
+.timeline-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(13, 36, 38, 0.06);
+    border-color: rgba(43, 115, 112, 0.3);
+}
+
+.speaker-avatar-mini {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    border: 2px solid var(--secondary);
+}
+
+.speaker-badge-btn {
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    border-radius: 20px;
+    padding: 4px 12px;
+    background: var(--light);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--dark);
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.speaker-badge-btn:hover {
+    background: #e2e8f0;
+    color: var(--primary);
+    transform: scale(1.02);
+}
+
+/* ============================================================
+   Analytics Dashboard & Reports — New Components
+   ============================================================ */
+
+/* ── KPI Tiles ─────────────────────────────────────────────────────────── */
+.kpi-card {
+    background: var(--white);
+    border: 1px solid rgba(226,232,240,0.8);
+    border-radius: 16px;
+    box-shadow: var(--card-shadow);
+    padding: 1.25rem 1.25rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+    transition: box-shadow 0.25s ease, transform 0.2s ease;
+    height: 100%;
+}
+.kpi-card:hover {
+    box-shadow: var(--hover-shadow);
+    transform: translateY(-2px);
+}
+.kpi-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    margin-bottom: 0.25rem;
+}
+.kpi-value {
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1;
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+}
+.kpi-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: #94a3b8;
+}
+
+/* Compact KPI variant (used in reports strip) */
+.kpi-card--sm { padding: 1rem; border-radius: 12px; }
+.kpi-icon--sm { width: 36px; height: 36px; border-radius: 10px; font-size: 0.95rem; }
+.kpi-value--sm { font-size: 1.55rem; }
+
+/* ── Top Event Banner ───────────────────────────────────────────────────── */
+.top-event-banner {
+    background: linear-gradient(135deg, #1e4644 0%, #2b7370 100%);
+    border-radius: 14px;
+    padding: 1rem 1.5rem;
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(43,115,112,0.25);
+}
+.top-event-icon {
+    width: 46px;
+    height: 46px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    color: #fcd34d;
+    flex-shrink: 0;
+}
+.top-event-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+.top-event-sub {
+    font-size: 0.75rem;
+    opacity: 0.75;
+}
+.top-event-count {
+    font-size: 1.8rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+/* ── Event Status Badges ────────────────────────────────────────────────── */
+.event-status-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-radius: 6px;
+    padding: 3px 8px;
+}
+.status-upcoming  { background: rgba(59,130,246,0.12);  color: #1d4ed8; }
+.status-ongoing   { background: rgba(245,158,11,0.12);  color: #b45309; }
+.status-completed { background: rgba(16,185,129,0.12);  color: #047857; }
+
+/* ── SVG Progress Ring ──────────────────────────────────────────────────── */
+.progress-ring-wrap svg { overflow: visible; }
+.ring-arc {
+    transition: stroke-dasharray 1.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Gender Bars ────────────────────────────────────────────────────────── */
+.gender-bar-wrap { }
+.gender-bar-track {
+    height: 7px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.gender-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1s ease;
+}
+.gender-bar-fill.male   { background: linear-gradient(90deg, #3b82f6, #2563eb); }
+.gender-bar-fill.female { background: linear-gradient(90deg, #ec4899, #db2777); }
+
+/* ── Sortable table ─────────────────────────────────────────────────────── */
+.btn-xs { font-size: 0.75rem; padding: 0.2rem 0.45rem; }
+
+/* ── Animated counter keyframes ─────────────────────────────────────────── */
+@keyframes countUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0);   }
+}
+.kpi-value { animation: countUp 0.5s ease both; }
