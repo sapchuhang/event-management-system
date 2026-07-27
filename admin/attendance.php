@@ -179,6 +179,47 @@ $exportUrl = "../actions/export_attendance.php?" . http_build_query($exportParam
 
 require_once '../includes/header.php';
 ?>
+<style>
+@media print {
+    .sidebar, #mainSidebar, .sidebar-overlay, .navbar, .sticky-top, .btn, .d-print-none, form, nav {
+        display: none !important;
+    }
+    .container-fluid, .row.g-0 {
+        height: auto !important;
+        overflow: visible !important;
+        flex-wrap: wrap !important;
+    }
+    .col-md-2 {
+        display: none !important;
+    }
+    .col-md-10, .col-12 {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 0 0 100% !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+    .main-content {
+        padding: 0 !important;
+    }
+    .glass-panel {
+        box-shadow: none !important;
+        border: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+    }
+    body {
+        background: white !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    
+    /* Only show details of present members when printing */
+    tr.absent-row {
+        display: none !important;
+    }
+}
+</style>
 <?php if ($event): ?>
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div class="d-flex align-items-center gap-3 flex-wrap">
@@ -442,8 +483,10 @@ require_once '../includes/header.php';
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($members as $member): ?>
-                        <tr id="row-<?= $member['id'] ?>">
+                    <?php foreach ($members as $member): 
+                        $rowClass = $member['attended_at'] ? 'present-row' : 'absent-row';
+                    ?>
+                        <tr id="row-<?= $member['id'] ?>" class="<?= $rowClass ?>">
                             <td><?= htmlspecialchars($member['member_no']) ?></td>
                             <td class="fw-medium"><?= htmlspecialchars($member['full_name']) ?></td>
                             <td><?= htmlspecialchars($member['contact']) ?></td>
@@ -797,6 +840,7 @@ require_once '../includes/header.php';
 
                     row = document.createElement('tr');
                     row.id = 'row-' + member.id;
+                    row.className = 'present-row';
                     row.innerHTML = `
                         <td>${escapeHtml(member.member_no)}</td>
                         <td class="fw-medium">${escapeHtml(member.full_name)}</td>
@@ -815,6 +859,7 @@ require_once '../includes/header.php';
                     tbody.insertBefore(row, tbody.firstChild);
                 }
             } else {
+                row.className = 'present-row';
                 row.querySelector('.status-cell').innerHTML = `
                     <span class="badge bg-success mb-1"><i class="fas fa-check me-1"></i> Present</span><br>
                     <a href="#" class="text-danger small text-decoration-none unmark-btn d-print-none" data-member-id="${member.id}" data-name="${member.full_name}"><i class="fas fa-undo me-1"></i>Undo</a>
@@ -939,6 +984,7 @@ require_once '../includes/header.php';
                                             // Update table row dynamically if it exists on screen
                                             const row = document.getElementById('row-' + member.id);
                                             if (row) {
+                                                row.className = 'present-row';
                                                 row.querySelector('.status-cell').innerHTML = `
                                             <span class="badge bg-success mb-1"><i class="fas fa-check me-1"></i> Present</span><br>
                                             <a href="#" class="text-danger small text-decoration-none unmark-btn d-print-none" data-member-id="${member.id}" data-name="${member.full_name}"><i class="fas fa-undo me-1"></i>Undo</a>
@@ -988,6 +1034,7 @@ require_once '../includes/header.php';
                                 // Update table row
                                 const row = document.getElementById('row-' + memberId);
                                 if (row) {
+                                    row.className = 'absent-row';
                                     row.querySelector('.status-cell').innerHTML = `<span class="badge bg-danger"><i class="fas fa-times me-1"></i> Absent</span>`;
                                     row.querySelector('.time-cell').textContent = '-';
                                 }
