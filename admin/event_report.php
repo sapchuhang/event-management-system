@@ -261,6 +261,22 @@ try {
             gap: 10px;
         }
 
+        /* CSS Counter for table rows */
+        table.attendance-table {
+            counter-reset: rowNumber;
+        }
+        table.attendance-table tbody tr {
+            counter-increment: rowNumber;
+        }
+        table.attendance-table tbody tr td.row-num::before {
+            content: counter(rowNumber);
+        }
+
+        /* Screen behavior when hiding absent members */
+        body.hide-absent tr.absent-row {
+            display: none !important;
+        }
+
         @media print {
             body {
                 background: white;
@@ -275,16 +291,25 @@ try {
                 margin: 0;
                 border-radius: 0;
             }
+
+            /* Always hide absent members on print */
+            tr.absent-row {
+                display: none !important;
+            }
         }
     </style>
 </head>
 
 <body>
 
-    <div class="no-print">
+    <div class="no-print d-flex align-items-center gap-3">
         <a href="events.php" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left me-1"></i> Back to
             Events</a>
-        <button onclick="window.print()" class="btn btn-sm" style="background:var(--primary);color:white;">
+        <div class="form-check form-switch mb-0 ms-2">
+            <input class="form-check-input" type="checkbox" id="toggleAbsent" checked>
+            <label class="form-check-label small fw-medium" for="toggleAbsent">Show Absent Members on Screen</label>
+        </div>
+        <button onclick="window.print()" class="btn btn-sm ms-auto" style="background:var(--primary);color:white;">
             <i class="fas fa-print me-1"></i> Print / Save PDF
         </button>
     </div>
@@ -389,7 +414,7 @@ try {
 
             <!-- Attendance Table -->
             <div class="section-title">Member Attendance List</div>
-            <table>
+            <table class="attendance-table">
                 <thead>
                     <tr>
                         <th>#</th>
@@ -404,9 +429,11 @@ try {
                     </tr>
                 </thead>
                 <tbody>
-                        <?php foreach ($members as $i => $member): ?>
-                        <tr>
-                            <td><?= $i + 1 ?></td>
+                        <?php foreach ($members as $i => $member): 
+                            $statusClass = $member['attended_at'] ? 'present-row' : 'absent-row';
+                        ?>
+                        <tr class="<?= $statusClass ?>">
+                            <td class="row-num"></td>
                             <td><?= htmlspecialchars($member['member_no']) ?></td>
                             <td><?= htmlspecialchars($member['full_name']) ?></td>
                             <td><?= htmlspecialchars($member['gender'] ?? '-') ?></td>
@@ -438,6 +465,20 @@ try {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleAbsent = document.getElementById('toggleAbsent');
+            if (toggleAbsent) {
+                toggleAbsent.addEventListener('change', function() {
+                    if (this.checked) {
+                        document.body.classList.remove('hide-absent');
+                    } else {
+                        document.body.classList.add('hide-absent');
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 
 </html>
