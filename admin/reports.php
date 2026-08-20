@@ -4,24 +4,70 @@ require_once '../includes/auth.php';
 requireLogin();
 
 // ── Summary KPIs ──────────────────────────────────────────────────────────
-$totalActive  = (int) $pdo->query("SELECT COUNT(*) FROM members WHERE status='active'")->fetchColumn();
-$totalMale    = (int) $pdo->query("SELECT COUNT(*) FROM members WHERE status='active' AND gender='Male'")->fetchColumn();
-$totalFemale  = (int) $pdo->query("SELECT COUNT(*) FROM members WHERE status='active' AND gender='Female'")->fetchColumn();
-$totalEvents  = (int) $pdo->query("SELECT COUNT(*) FROM events")->fetchColumn();
-$totalCheckins = (int) $pdo->query("SELECT COUNT(*) FROM attendance")->fetchColumn();
+$restrictedTables = getRestrictedTables();
+if ($restrictedTables !== null) {
+    if (empty($restrictedTables)) {
+        $totalActive   = 0;
+        $totalMale     = 0;
+        $totalFemale   = 0;
+        $totalEvents   = (int) $pdo->query("SELECT COUNT(*) FROM events")->fetchColumn();
+        $totalCheckins = 0;
+        $eventsRaw     = [];
+    } else {
+        $inClause = implode(',', array_fill(0, count($restrictedTables), '?'));
 
-// Per-event stats for all events
-$eventsRaw = $pdo->query("
-    SELECT e.*,
-           COUNT(a.id)                                              AS attended,
-           SUM(m.gender = 'Male'   AND a.id IS NOT NULL)            AS male_attended,
-           SUM(m.gender = 'Female' AND a.id IS NOT NULL)            AS female_attended
-    FROM events e
-    LEFT JOIN attendance a ON e.id = a.event_id
-    LEFT JOIN members m    ON a.member_id = m.id AND m.status = 'active'
-    GROUP BY e.id
-    ORDER BY e.event_date DESC
-")->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM members WHERE status='active' AND table_no IN ($inClause)");
+        $stmt->execute($restrictedTables);
+        $totalActive = (int)$stmt->fetchColumn();
+
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM members WHERE status='active' AND gender='Male' AND table_no IN ($inClause)");
+        $stmt->execute($restrictedTables);
+        $totalMale = (int)$stmt->fetchColumn();
+
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM members WHERE status='active' AND gender='Female' AND table_no IN ($inClause)");
+        $stmt->execute($restrictedTables);
+        $totalFemale = (int)$stmt->fetchColumn();
+
+        $totalEvents = (int) $pdo->query("SELECT COUNT(*) FROM events")->fetchColumn();
+
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM attendance a JOIN members m ON a.member_id = m.id WHERE m.table_no IN ($inClause)");
+        $stmt->execute($restrictedTables);
+        $totalCheckins = (int)$stmt->fetchColumn();
+
+        $stmt = $pdo->prepare("
+            SELECT e.*,
+                   COUNT(a.id)                                              AS attended,
+                   SUM(m.gender = 'Male'   AND a.id IS NOT NULL)            AS male_attended,
+                   SUM(m.gender = 'Female' AND a.id IS NOT NULL)            AS female_attended
+            FROM events e
+            LEFT JOIN attendance a ON e.id = a.event_id
+            LEFT JOIN members m    ON a.member_id = m.id AND m.status = 'active' AND m.table_no IN ($inClause)
+            GROUP BY e.id
+            ORDER BY e.event_date DESC
+        ");
+        $stmt->execute($restrictedTables);
+        $eventsRaw = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+} else {
+    $totalActive  = (int) $pdo->query("SELECT COUNT(*) FROM members WHERE status='active'")->fetchColumn();
+    $totalMale    = (int) $pdo->query("SELECT COUNT(*) FROM members WHERE status='active' AND gender='Male'")->fetchColumn();
+    $totalFemale  = (int) $pdo->query("SELECT COUNT(*) FROM members WHERE status='active' AND gender='Female'")->fetchColumn();
+    $totalEvents  = (int) $pdo->query("SELECT COUNT(*) FROM events")->fetchColumn();
+    $totalCheckins = (int) $pdo->query("SELECT COUNT(*) FROM attendance")->fetchColumn();
+
+    // Per-event stats for all events
+    $eventsRaw = $pdo->query("
+        SELECT e.*,
+               COUNT(a.id)                                              AS attended,
+               SUM(m.gender = 'Male'   AND a.id IS NOT NULL)            AS male_attended,
+               SUM(m.gender = 'Female' AND a.id IS NOT NULL)            AS female_attended
+        FROM events e
+        LEFT JOIN attendance a ON e.id = a.event_id
+        LEFT JOIN members m    ON a.member_id = m.id AND m.status = 'active'
+        GROUP BY e.id
+        ORDER BY e.event_date DESC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+}
 
 $events = [];
 $sumPct = 0;

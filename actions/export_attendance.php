@@ -44,6 +44,19 @@ if ($pageFilter !== '') {
     $params[] = $pageFilter;
 }
 
+$restrictedTables = getRestrictedTables();
+if ($restrictedTables !== null) {
+    if (empty($restrictedTables)) {
+        $queryParts[] = "1=0";
+    } else {
+        $inClause = implode(',', array_fill(0, count($restrictedTables), '?'));
+        $queryParts[] = "m.table_no IN ($inClause)";
+        foreach ($restrictedTables as $tbl) {
+            $params[] = $tbl;
+        }
+    }
+}
+
 $whereClause = "";
 if (!empty($queryParts)) {
     $whereClause = "AND " . implode(" AND ", $queryParts);

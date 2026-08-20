@@ -45,6 +45,7 @@ try {
             id INT AUTO_INCREMENT PRIMARY KEY,
             username VARCHAR(50) NOT NULL UNIQUE,
             password VARCHAR(255) NOT NULL,
+            role ENUM('admin', 'staff') NOT NULL DEFAULT 'admin',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS members (
@@ -66,15 +67,19 @@ try {
             event_date DATE NOT NULL,
             location VARCHAR(200),
             status ENUM('upcoming', 'ongoing', 'completed') DEFAULT 'upcoming',
+            allowance_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS attendance (
             id INT AUTO_INCREMENT PRIMARY KEY,
             event_id INT NOT NULL,
             member_id INT NOT NULL,
+            marked_by INT NULL,
+            allowance_paid DECIMAL(10,2) NOT NULL DEFAULT 0.00,
             attended_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
             FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
+            FOREIGN KEY (marked_by) REFERENCES admin_users(id) ON DELETE SET NULL,
             UNIQUE KEY unique_attendance (event_id, member_id)
         );
         CREATE TABLE IF NOT EXISTS speakers (
@@ -99,13 +104,31 @@ try {
             FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
             FOREIGN KEY (speaker_id) REFERENCES speakers(id) ON DELETE SET NULL
         );
+        CREATE TABLE IF NOT EXISTS staff_event_cash (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            event_id INT NOT NULL,
+            user_id INT NOT NULL,
+            allocated_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES admin_users(id) ON DELETE CASCADE,
+            UNIQUE KEY unique_staff_event (event_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS user_tables (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            table_no VARCHAR(50) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES admin_users(id) ON DELETE CASCADE,
+            UNIQUE KEY unique_user_table (user_id, table_no)
+        );
     ");
 
     // Default admin: admin / password123
     $stmt = $pdo->query("SELECT COUNT(*) FROM admin_users");
     if ($stmt->fetchColumn() == 0) {
         $hash = password_hash('password123', PASSWORD_DEFAULT);
-        $pdo->exec("INSERT INTO admin_users (username, password) VALUES ('admin', '$hash')");
+        $pdo->exec("INSERT INTO admin_users (username, password, role) VALUES ('admin', '$hash', 'admin')");
     }
 
     echo "Installation successful! <strong>Please delete this file immediately for security.</strong>";

@@ -13,11 +13,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    $id       = $_POST['id'] ?? null;
-    $title    = trim($_POST['title'] ?? '');
-    $event_date = trim($_POST['event_date'] ?? '');
-    $location = trim($_POST['location'] ?? '');
-    $status   = $_POST['status'] ?? '';
+    $id               = $_POST['id'] ?? null;
+    $title            = trim($_POST['title'] ?? '');
+    $event_date       = trim($_POST['event_date'] ?? '');
+    $location         = trim($_POST['location'] ?? '');
+    $status           = $_POST['status'] ?? '';
+    $allowance_amount = floatval($_POST['allowance_amount'] ?? 0.00);
 
     // Validate
     $errors = [];
@@ -29,6 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (strlen($location) > 200)     $errors[] = 'Location must be under 200 characters.';
     $allowedStatuses = ['upcoming', 'ongoing', 'completed'];
     if (!in_array($status, $allowedStatuses)) $errors[] = 'Invalid status.';
+    if ($allowance_amount < 0) $errors[] = 'Transportation allowance cannot be negative.';
 
     if (!empty($errors)) {
         setFlashMessage('error', implode(' ', $errors));
@@ -37,11 +39,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
-        $stmt = $pdo->prepare("UPDATE events SET title = ?, event_date = ?, location = ?, status = ? WHERE id = ?");
-        $stmt->execute([$title, $event_date, $location, $status, $id]);
+        $stmt = $pdo->prepare("UPDATE events SET title = ?, event_date = ?, location = ?, status = ?, allowance_amount = ? WHERE id = ?");
+        $stmt->execute([$title, $event_date, $location, $status, $allowance_amount, $id]);
         setFlashMessage('success', 'Event updated successfully!');
     } catch (PDOException $e) {
-        setFlashMessage('error', 'Database error: ' . $e->getMessage());
+        error_log("Database error updating event: " . $e->getMessage());
+        setFlashMessage('error', 'A database error occurred while updating the event.');
     }
 
     header('Location: ../admin/events.php');

@@ -30,6 +30,19 @@ $member_id = $data['member_id'] ?? null;
 
 if ($event_id && $member_id) {
     try {
+        // Check table restriction
+        $stmtMember = $pdo->prepare("SELECT table_no FROM members WHERE id = ?");
+        $stmtMember->execute([$member_id]);
+        $member = $stmtMember->fetch();
+        if ($member) {
+            $restrictedTables = getRestrictedTables();
+            if ($restrictedTables !== null && !in_array($member['table_no'], $restrictedTables)) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'You are not assigned to manage members of Table: ' . ($member['table_no'] ?: 'N/A')]);
+                exit;
+            }
+        }
+
         $stmt = $pdo->prepare("DELETE FROM attendance WHERE event_id = ? AND member_id = ?");
         $stmt->execute([$event_id, $member_id]);
         echo json_encode(['success' => true, 'message' => 'Attendance unmarked successfully.']);

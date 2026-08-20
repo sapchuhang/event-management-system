@@ -40,18 +40,54 @@ $totalRecords = 0;
 $totalPages = 1;
 
 if ($event) {
+    $restrictedTables = getRestrictedTables();
+
     // 1. Fetch active members for the autocomplete datalist (lightweight query)
-    $stmtDatalist = $pdo->prepare("SELECT member_no, full_name FROM members WHERE status = 'active' ORDER BY full_name ASC");
-    $stmtDatalist->execute();
+    if ($restrictedTables !== null) {
+        if (empty($restrictedTables)) {
+            $stmtDatalist = $pdo->prepare("SELECT member_no, full_name FROM members WHERE 1=0");
+            $stmtDatalist->execute();
+        } else {
+            $inClause = implode(',', array_fill(0, count($restrictedTables), '?'));
+            $stmtDatalist = $pdo->prepare("SELECT member_no, full_name FROM members WHERE status = 'active' AND table_no IN ($inClause) ORDER BY full_name ASC");
+            $stmtDatalist->execute($restrictedTables);
+        }
+    } else {
+        $stmtDatalist = $pdo->prepare("SELECT member_no, full_name FROM members WHERE status = 'active' ORDER BY full_name ASC");
+        $stmtDatalist->execute();
+    }
     $datalistMembers = $stmtDatalist->fetchAll();
 
     // 2. Fetch unique physical register page numbers for filtering
-    $stmtPages = $pdo->query("SELECT DISTINCT page_number FROM members WHERE page_number IS NOT NULL AND page_number != '' ORDER BY CAST(page_number AS UNSIGNED) ASC, page_number ASC");
+    if ($restrictedTables !== null) {
+        if (empty($restrictedTables)) {
+            $stmtPages = $pdo->prepare("SELECT DISTINCT page_number FROM members WHERE 1=0");
+            $stmtPages->execute();
+        } else {
+            $inClause = implode(',', array_fill(0, count($restrictedTables), '?'));
+            $stmtPages = $pdo->prepare("SELECT DISTINCT page_number FROM members WHERE page_number IS NOT NULL AND page_number != '' AND table_no IN ($inClause) ORDER BY CAST(page_number AS UNSIGNED) ASC, page_number ASC");
+            $stmtPages->execute($restrictedTables);
+        }
+    } else {
+        $stmtPages = $pdo->query("SELECT DISTINCT page_number FROM members WHERE page_number IS NOT NULL AND page_number != '' ORDER BY CAST(page_number AS UNSIGNED) ASC, page_number ASC");
+    }
     $uniquePageNumbers = $stmtPages->fetchAll(PDO::FETCH_COLUMN);
 
     // 3. Build query filters
     $queryParts = [];
     $params = [$event_id];
+
+    if ($restrictedTables !== null) {
+        if (empty($restrictedTables)) {
+            $queryParts[] = "1=0";
+        } else {
+            $inClause = implode(',', array_fill(0, count($restrictedTables), '?'));
+            $queryParts[] = "m.table_no IN ($inClause)";
+            foreach ($restrictedTables as $tbl) {
+                $params[] = $tbl;
+            }
+        }
+    }
 
     if ($search !== '') {
         $queryParts[] = "(m.full_name LIKE ? OR m.member_no LIKE ? OR m.contact LIKE ? OR m.page_number LIKE ?)";
@@ -114,6 +150,26 @@ if ($event) {
     $members = $stmt->fetchAll();
 
     $totalPages = max(1, ceil($totalRecords / $perPage));
+
+    // Transportation Allowance configurations
+    $allowanceAmount = (float)$event['allowance_amount'];
+    $userAllocated = 0.00;
+    $userPaid = 0.00;
+    $userRemaining = 0.00;
+
+    if ($allowanceAmount > 0) {
+        $userId = $_SESSION['admin_id'];
+        
+        $stmtCash = $pdo->prepare("SELECT COALESCE(allocated_amount, 0.00) FROM staff_event_cash WHERE event_id = ? AND user_id = ?");
+        $stmtCash->execute([$event_id, $userId]);
+        $userAllocated = (float)$stmtCash->fetchColumn();
+
+        $stmtPaid = $pdo->prepare("SELECT COALESCE(SUM(allowance_paid), 0.00) FROM attendance WHERE event_id = ? AND marked_by = ?");
+        $stmtPaid->execute([$event_id, $userId]);
+        $userPaid = (float)$stmtPaid->fetchColumn();
+
+        $userRemaining = $userAllocated - $userPaid;
+    }
 }
 
 // Helpers for sorting and pagination links preserving filter state
@@ -236,10 +292,13 @@ require_once '../includes/header.php';
                 </select>
             <?php endif; ?>
         </div>
-        <div class="d-print-none">
-            <a href="<?= htmlspecialchars($exportUrl) ?>" class="btn btn-outline-success me-2"><i
+        <div class="d-print-none d-flex gap-2">
+            <?php if (isAdmin() && $allowanceAmount > 0): ?>
+                <a href="event_cash.php?event_id=<?= $event_id ?>" class="btn btn-outline-primary"><i class="fas fa-coins me-2"></i> Manage Staff Cash</a>
+            <?php endif; ?>
+            <a href="<?= htmlspecialchars($exportUrl) ?>" class="btn btn-outline-success"><i
                     class="fas fa-download me-2"></i> Export CSV</a>
-            <button class="btn btn-outline-secondary me-2" onclick="window.print()"><i class="fas fa-print me-2"></i>
+            <button class="btn btn-outline-secondary" onclick="window.print()"><i class="fas fa-print me-2"></i>
                 Print</button>
             <a href="events.php" class="btn btn-outline-secondary"><i class="fas fa-arrow-left me-2"></i> Back to Events</a>
         </div>
@@ -326,6 +385,19 @@ require_once '../includes/header.php';
     <div class="row mb-4 d-print-none">
         <div class="col-md-12">
             <div class="glass-panel p-4">
+                <?php if ($allowanceAmount > 0): 
+                    $floatClass = ($userRemaining >= $allowanceAmount) ? 'bg-success-subtle text-success border-success-subtle' : 'bg-danger-subtle text-danger border-danger-subtle';
+                ?>
+                    <div class="alert <?= $floatClass ?> border d-flex justify-content-between align-items-center mb-3 py-2 px-3 small" id="cashFloatAlert">
+                        <div>
+                            <i class="fas fa-wallet me-2"></i>
+                            Transportation Allowance: <strong>NPR <?= number_format($allowanceAmount, 2) ?> per member</strong>
+                        </div>
+                        <div class="text-end">
+                            Your Cash Float: <strong class="font-monospace fs-6" id="remainingCashDisplay">NPR <?= number_format($userRemaining, 2) ?></strong> / NPR <?= number_format($userAllocated, 2) ?> remaining
+                        </div>
+                    </div>
+                <?php endif; ?>
                 <form id="attendanceForm" action="../actions/mark_attendance.php" method="POST"
                     class="d-flex align-items-end gap-3 flex-wrap">
                     <input type="hidden" name="event_id" value="<?= $event_id ?>">
@@ -480,6 +552,9 @@ require_once '../includes/header.php';
                             </a>
                         </th>
                         <th>Time</th>
+                        <?php if ($allowanceAmount > 0): ?>
+                        <th>Allowance</th>
+                        <?php endif; ?>
                     </tr>
                 </thead>
                 <tbody>
@@ -491,7 +566,7 @@ require_once '../includes/header.php';
                             <td class="fw-medium"><?= htmlspecialchars($member['full_name']) ?></td>
                             <td><?= htmlspecialchars($member['contact']) ?></td>
                             <td><span class="badge bg-secondary">Page
-                                    <?= htmlspecialchars($member['page_number'] ?? '-') ?></span></td>
+                                     <?= htmlspecialchars($member['page_number'] ?? '-') ?></span></td>
                             <td><span class="text-secondary"><?= htmlspecialchars($member['table_no'] ?? '-') ?></span></td>
                             <td><span class="text-secondary"><?= htmlspecialchars($member['file_number'] ?? '-') ?></span></td>
                             <td class="status-cell">
@@ -508,11 +583,16 @@ require_once '../includes/header.php';
                             <td class="text-muted small time-cell">
                                 <?= $member['attended_at'] ? date('h:i A', strtotime($member['attended_at'])) : '-' ?>
                             </td>
+                            <?php if ($allowanceAmount > 0): ?>
+                            <td class="allowance-cell font-monospace fw-medium text-success">
+                                <?= $member['attended_at'] ? 'NPR ' . number_format($member['allowance_paid'] ?? $allowanceAmount, 2) : '-' ?>
+                            </td>
+                            <?php endif; ?>
                         </tr>
                     <?php endforeach; ?>
                     <?php if (empty($members)): ?>
                         <tr>
-                            <td colspan="8" class="text-center py-4 text-muted">No attendance records found.</td>
+                            <td colspan="<?= $allowanceAmount > 0 ? 9 : 8 ?>" class="text-center py-4 text-muted">No attendance records found.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
@@ -572,6 +652,24 @@ require_once '../includes/header.php';
                 icon: type === 'danger' ? 'error' : type,
                 title: message
             });
+        }
+
+        function updateCashFloatDisplay(remaining) {
+            const remDisplay = document.getElementById('remainingCashDisplay');
+            if (remDisplay) {
+                const formatted = parseFloat(remaining).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                remDisplay.textContent = 'NPR ' + formatted;
+                
+                const alertBox = document.getElementById('cashFloatAlert');
+                if (alertBox) {
+                    const allowanceVal = <?= $allowanceAmount ?>;
+                    if (parseFloat(remaining) < allowanceVal) {
+                        alertBox.className = 'alert bg-danger-subtle text-danger border border-danger-subtle d-flex justify-content-between align-items-center mb-3 py-2 px-3 small';
+                    } else {
+                        alertBox.className = 'alert bg-success-subtle text-success border border-success-subtle d-flex justify-content-between align-items-center mb-3 py-2 px-3 small';
+                    }
+                }
+            }
         }
 
         // ── QR Scanner Logic ──
@@ -773,6 +871,12 @@ require_once '../includes/header.php';
                                     <th class="text-secondary">Register Page</th>
                                     <td>Page ${member.page_number || '-'}</td>
                                 </tr>
+                                <?php if ($allowanceAmount > 0): ?>
+                                <tr>
+                                    <th class="text-secondary text-success fw-bold"><i class="fas fa-coins me-1"></i>Allowance</th>
+                                    <td><span class="badge bg-success-subtle text-success border border-success-subtle font-monospace">NPR <?= number_format($allowanceAmount, 2) ?></span></td>
+                                </tr>
+                                <?php endif; ?>
                             </table>
                         </div>
                     `,
@@ -802,6 +906,9 @@ require_once '../includes/header.php';
                                     showConfirmButton: false
                                 });
                                 updateAttendanceTable(data.member);
+                                if (data.remaining_cash !== undefined) {
+                                    updateCashFloatDisplay(data.remaining_cash);
+                                }
                             } else {
                                 showMessage('danger', data.message);
                             }
@@ -834,7 +941,7 @@ require_once '../includes/header.php';
                 if (tbody) {
                     // Remove "No attendance records found." row if exists
                     const emptyRow = tbody.querySelector('tr td.text-center');
-                    if (emptyRow && emptyRow.getAttribute('colspan') === '8') {
+                    if (emptyRow) {
                         tbody.innerHTML = '';
                     }
 
@@ -855,6 +962,9 @@ require_once '../includes/header.php';
                                data-name="${escapeHtml(member.full_name)}"><i class="fas fa-undo me-1"></i>Undo</a>
                         </td>
                         <td class="text-muted small time-cell">${member.attended_at}</td>
+                        <?php if ($allowanceAmount > 0): ?>
+                        <td class="allowance-cell font-monospace fw-medium text-success">NPR <?= number_format($allowanceAmount, 2) ?></td>
+                        <?php endif; ?>
                     `;
                     tbody.insertBefore(row, tbody.firstChild);
                 }
@@ -865,6 +975,13 @@ require_once '../includes/header.php';
                     <a href="#" class="text-danger small text-decoration-none unmark-btn d-print-none" data-member-id="${member.id}" data-name="${member.full_name}"><i class="fas fa-undo me-1"></i>Undo</a>
                 `;
                 row.querySelector('.time-cell').textContent = member.attended_at;
+
+                <?php if ($allowanceAmount > 0): ?>
+                const allowanceCell = row.querySelector('.allowance-cell');
+                if (allowanceCell) {
+                    allowanceCell.textContent = 'NPR <?= number_format($allowanceAmount, 2) ?>';
+                }
+                <?php endif; ?>
 
                 // Bring the row to the top of the table
                 const tbody = row.parentElement;
@@ -946,6 +1063,12 @@ require_once '../includes/header.php';
                                         <th class="text-secondary">File No.</th>
                                         <td>${member.file_number || '-'}</td>
                                     </tr>
+                                    <?php if ($allowanceAmount > 0): ?>
+                                    <tr>
+                                        <th class="text-secondary text-success fw-bold"><i class="fas fa-coins me-1"></i>Allowance</th>
+                                        <td><span class="badge bg-success-subtle text-success border border-success-subtle font-monospace">NPR <?= number_format($allowanceAmount, 2) ?></span></td>
+                                    </tr>
+                                    <?php endif; ?>
                                 </table>
                             </div>
                         `,
@@ -994,6 +1117,9 @@ require_once '../includes/header.php';
                                                 // Bring the row to the absolute top of the table body immediately!
                                                 const tbody = row.parentElement;
                                                 tbody.insertBefore(row, tbody.firstChild);
+                                            }
+                                            if (data.remaining_cash !== undefined) {
+                                                updateCashFloatDisplay(data.remaining_cash);
                                             }
                                         } else {
                                             showMessage('danger', data.message);

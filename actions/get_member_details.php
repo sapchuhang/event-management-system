@@ -41,6 +41,14 @@ $stmt->execute([$event_id, $member_no]);
 $member = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if ($member) {
+    // Check table restriction
+    $restrictedTables = getRestrictedTables();
+    if ($restrictedTables !== null && !in_array($member['table_no'], $restrictedTables)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Access Denied: Table restriction active.']);
+        exit;
+    }
+
     echo json_encode([
         'success' => true,
         'member' => $member

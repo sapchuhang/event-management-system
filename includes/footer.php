@@ -69,13 +69,13 @@
                 $(this).nepaliDatePicker('show');
             });
 
-            // Populate Edit modal fields when opened
             $(document).on('click', '.btn-edit-event', function () {
                 $('#edit_event_id').val($(this).data('id'));
                 $('#edit_event_title').val($(this).data('title'));
                 $('#edit_event_date').val($(this).data('date'));
                 $('#edit_event_location').val($(this).data('location'));
                 $('#edit_event_status').val($(this).data('status'));
+                $('#edit_event_allowance_amount').val($(this).data('allowance'));
                 // Update the visible Nepali datepicker input
                 $('#edit-nepali-datepicker').val($(this).data('date'));
             });

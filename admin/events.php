@@ -31,7 +31,14 @@ require_once '../includes/header.php';
             <tbody>
                 <?php foreach ($events as $event): ?>
                     <tr>
-                        <td class="fw-medium"><?= htmlspecialchars($event['title']) ?></td>
+                        <td class="fw-medium">
+                            <?= htmlspecialchars($event['title']) ?>
+                            <?php if ((float)$event['allowance_amount'] > 0): ?>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle ms-1" style="font-size: 0.72rem;">
+                                    <i class="fas fa-money-bill-wave me-1"></i>NPR <?= number_format($event['allowance_amount'], 2) ?>
+                                </span>
+                            <?php endif; ?>
+                        </td>
                         <td><?= htmlspecialchars($event['event_date']) ?></td>
                         <td><?= htmlspecialchars($event['location']) ?></td>
                         <td>
@@ -64,7 +71,8 @@ require_once '../includes/header.php';
                                 data-title="<?= htmlspecialchars($event['title']) ?>"
                                 data-date="<?= htmlspecialchars($event['event_date']) ?>"
                                 data-location="<?= htmlspecialchars($event['location']) ?>"
-                                data-status="<?= htmlspecialchars($event['status']) ?>" title="Edit Event">
+                                data-status="<?= htmlspecialchars($event['status']) ?>" 
+                                data-allowance="<?= htmlspecialchars($event['allowance_amount']) ?>" title="Edit Event">
                                 <i class="fas fa-edit me-1"></i>Edit
                             </button>
                             <form method="POST" action="../actions/delete_event_action.php" class="d-inline"
@@ -115,6 +123,14 @@ require_once '../includes/header.php';
                         <label class="form-label fw-medium">Location</label>
                         <input type="text" name="location" class="form-control" required>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Transportation Allowance (per member)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">NPR</span>
+                            <input type="number" step="0.01" min="0" name="allowance_amount" class="form-control" value="0.00" required>
+                        </div>
+                        <div class="form-text text-muted">Set to 0.00 if this event does not provide a member allowance.</div>
+                    </div>
                 </div>
                 <div class="modal-footer border-top border-light">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -151,6 +167,14 @@ require_once '../includes/header.php';
                     <div class="mb-3">
                         <label class="form-label fw-medium">Location</label>
                         <input type="text" id="edit_event_location" name="location" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Transportation Allowance (per member)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">NPR</span>
+                            <input type="number" step="0.01" min="0" id="edit_event_allowance_amount" name="allowance_amount" class="form-control" required>
+                        </div>
+                        <div class="form-text text-muted">Set to 0.00 if this event does not provide a member allowance.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-medium">Status</label>

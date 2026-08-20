@@ -20,13 +20,29 @@ if (!$event) {
 }
 
 // Fetch attendance with member details
+$restrictedTables = getRestrictedTables();
+$whereClause = "";
+$params = [$event_id];
+if ($restrictedTables !== null) {
+    if (empty($restrictedTables)) {
+        $whereClause = "AND 1=0";
+    } else {
+        $inClause = implode(',', array_fill(0, count($restrictedTables), '?'));
+        $whereClause = "AND m.table_no IN ($inClause)";
+        foreach ($restrictedTables as $tbl) {
+            $params[] = $tbl;
+        }
+    }
+}
+
 $stmt = $pdo->prepare("
     SELECT m.member_no, m.full_name, m.gender, m.contact, m.page_number, m.table_no, m.file_number, a.attended_at
     FROM members m
     LEFT JOIN attendance a ON m.id = a.member_id AND a.event_id = ?
+    WHERE 1=1 {$whereClause}
     ORDER BY m.full_name ASC
 ");
-$stmt->execute([$event_id]);
+$stmt->execute($params);
 $members = $stmt->fetchAll();
 
 $totalMembers = count($members);
@@ -47,6 +63,34 @@ try {
     $stmt->execute([$event_id]);
     $agendas = $stmt->fetchAll();
 } catch (PDOException $e) {
+}
+
+// Fetch transportation allowance & staff cash float reconciliation data
+$allowanceActive = ((float)$event['allowance_amount'] > 0);
+$totalAllowancePaid = 0.00;
+$staffCashReconciliation = [];
+
+if ($allowanceActive) {
+    $stmtSum = $pdo->prepare("SELECT COALESCE(SUM(allowance_paid), 0.00) FROM attendance WHERE event_id = ?");
+    $stmtSum->execute([$event_id]);
+    $totalAllowancePaid = (float)$stmtSum->fetchColumn();
+
+    $stmtRecon = $pdo->prepare("
+        SELECT u.username, 
+               COALESCE(sec.allocated_amount, 0.00) AS allocated,
+               COALESCE(payouts.total_paid, 0.00) AS paid
+        FROM admin_users u
+        JOIN staff_event_cash sec ON u.id = sec.user_id AND sec.event_id = :event_id
+        LEFT JOIN (
+            SELECT marked_by, SUM(allowance_paid) AS total_paid
+            FROM attendance 
+            WHERE event_id = :event_id2
+            GROUP BY marked_by
+        ) payouts ON u.id = payouts.marked_by
+        ORDER BY u.username ASC
+    ");
+    $stmtRecon->execute(['event_id' => $event_id, 'event_id2' => $event_id]);
+    $staffCashReconciliation = $stmtRecon->fetchAll();
 }
 ?>
 <!DOCTYPE html>
@@ -396,6 +440,56 @@ try {
                     </div>
                 </div>
             </div>
+
+            <!-- Allowance & Cash Float Reconciliation -->
+            <?php if ($allowanceActive): ?>
+            <div class="section-title">Transportation Allowance & Payout Reconciliation</div>
+            <div class="mb-4">
+                <div class="meta-grid mb-3">
+                    <div class="meta-card">
+                        <div class="label">Allowance Rate</div>
+                        <div class="value">NPR <?= number_format($event['allowance_amount'], 2) ?></div>
+                    </div>
+                    <div class="meta-card">
+                        <div class="label">Total Paid Out</div>
+                        <div class="value">NPR <?= number_format($totalAllowancePaid, 2) ?></div>
+                    </div>
+                    <div class="meta-card">
+                        <div class="label">Presents Paid</div>
+                        <div class="value"><?= $totalPresent ?> Members</div>
+                    </div>
+                </div>
+                
+                <h6 class="fw-bold mb-2 text-secondary small text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">Staff Float Payout Breakdown</h6>
+                <table class="mb-4 text-start" style="width:100%; border: 1px solid #dee2e6;">
+                    <thead>
+                        <tr style="background:#f8f9fa; color:#212529;">
+                            <th style="background:#f8f9fa; color:#212529; border-bottom: 2px solid #dee2e6; padding: 8px 12px;">Staff Username</th>
+                            <th style="background:#f8f9fa; color:#212529; border-bottom: 2px solid #dee2e6; padding: 8px 12px;">Allocated Cash Float</th>
+                            <th style="background:#f8f9fa; color:#212529; border-bottom: 2px solid #dee2e6; padding: 8px 12px;">Amount Paid Out</th>
+                            <th style="background:#f8f9fa; color:#212529; border-bottom: 2px solid #dee2e6; padding: 8px 12px;">Remaining Cash Float</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($staffCashReconciliation as $row): 
+                            $rem = $row['allocated'] - $row['paid'];
+                        ?>
+                        <tr>
+                            <td class="fw-medium text-dark" style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;"><?= htmlspecialchars($row['username']) ?></td>
+                            <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">NPR <?= number_format($row['allocated'], 2) ?></td>
+                            <td class="text-danger" style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">NPR <?= number_format($row['paid'], 2) ?></td>
+                            <td class="fw-bold <?= $rem >= $event['allowance_amount'] ? 'text-success' : 'text-danger' ?>" style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">NPR <?= number_format($rem, 2) ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                        <?php if (empty($staffCashReconciliation)): ?>
+                        <tr>
+                            <td colspan="4" class="text-center text-muted" style="padding: 8px 12px;">No staff cash floats allocated.</td>
+                        </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+            <?php endif; ?>
 
             <!-- Agenda -->
                 <?php if (!empty($agendas)): ?>

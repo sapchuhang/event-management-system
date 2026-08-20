@@ -3,42 +3,112 @@ require_once '../config/db.php';
 require_once '../includes/auth.php';
 requireLogin();
 
-// ── Core KPI queries ─────────────────────────────────────────────────────────
-$totalMembers  = (int) $pdo->query("SELECT COUNT(*) FROM members")->fetchColumn();
-$activeMembers = (int) $pdo->query("SELECT COUNT(*) FROM members WHERE status='active'")->fetchColumn();
-$totalEvents   = (int) $pdo->query("SELECT COUNT(*) FROM events")->fetchColumn();
-$totalCheckIns = (int) $pdo->query("SELECT COUNT(*) FROM attendance")->fetchColumn();
+$restrictedTables = getRestrictedTables();
 
-// Average turnout %
-$evRows = $pdo->query("
-    SELECT e.id, COUNT(a.id) AS attended
-    FROM events e LEFT JOIN attendance a ON e.id = a.event_id
-    GROUP BY e.id
-")->fetchAll();
-$avgTurnout = 0;
-if ($totalMembers > 0 && count($evRows) > 0) {
-    $sumPct = 0;
-    foreach ($evRows as $r) { $sumPct += ($r['attended'] / $totalMembers) * 100; }
-    $avgTurnout = round($sumPct / count($evRows), 1);
+if ($restrictedTables !== null) {
+    if (empty($restrictedTables)) {
+        $totalMembers = 0;
+        $activeMembers = 0;
+        $totalEvents = (int) $pdo->query("SELECT COUNT(*) FROM events")->fetchColumn();
+        $totalCheckIns = 0;
+        $avgTurnout = 0;
+        $topEventName = '—';
+        $topEventCnt = 0;
+        $recentActivities = [];
+    } else {
+        $inClause = implode(',', array_fill(0, count($restrictedTables), '?'));
+        
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM members WHERE table_no IN ($inClause)");
+        $stmt->execute($restrictedTables);
+        $totalMembers = (int)$stmt->fetchColumn();
+
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM members WHERE status='active' AND table_no IN ($inClause)");
+        $stmt->execute($restrictedTables);
+        $activeMembers = (int)$stmt->fetchColumn();
+
+        $totalEvents = (int) $pdo->query("SELECT COUNT(*) FROM events")->fetchColumn();
+
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM attendance a JOIN members m ON a.member_id = m.id WHERE m.table_no IN ($inClause)");
+        $stmt->execute($restrictedTables);
+        $totalCheckIns = (int)$stmt->fetchColumn();
+
+        $stmt = $pdo->prepare("
+            SELECT e.id, COUNT(a.id) AS attended
+            FROM events e 
+            LEFT JOIN attendance a ON e.id = a.event_id
+            LEFT JOIN members m ON a.member_id = m.id AND m.table_no IN ($inClause)
+            GROUP BY e.id
+        ");
+        $stmt->execute($restrictedTables);
+        $evRows = $stmt->fetchAll();
+        $avgTurnout = 0;
+        if ($totalMembers > 0 && count($evRows) > 0) {
+            $sumPct = 0;
+            foreach ($evRows as $r) { $sumPct += ($r['attended'] / $totalMembers) * 100; }
+            $avgTurnout = round($sumPct / count($evRows), 1);
+        }
+
+        $stmt = $pdo->prepare("
+            SELECT e.title, COUNT(a.id) AS cnt
+            FROM events e 
+            LEFT JOIN attendance a ON e.id = a.event_id
+            LEFT JOIN members m ON a.member_id = m.id AND m.table_no IN ($inClause)
+            GROUP BY e.id, e.title ORDER BY cnt DESC LIMIT 1
+        ");
+        $stmt->execute($restrictedTables);
+        $topRow = $stmt->fetch();
+        $topEventName = $topRow['title'] ?? '—';
+        $topEventCnt  = (int)($topRow['cnt'] ?? 0);
+
+        $stmt = $pdo->prepare("
+            SELECT a.attended_at, m.full_name, m.member_no, ev.title
+            FROM attendance a
+            JOIN members m ON a.member_id = m.id
+            JOIN events ev ON a.event_id = ev.id
+            WHERE m.table_no IN ($inClause)
+            ORDER BY a.attended_at DESC LIMIT 10
+        ");
+        $stmt->execute($restrictedTables);
+        $recentActivities = $stmt->fetchAll();
+    }
+} else {
+    // ── Core KPI queries ─────────────────────────────────────────────────────────
+    $totalMembers  = (int) $pdo->query("SELECT COUNT(*) FROM members")->fetchColumn();
+    $activeMembers = (int) $pdo->query("SELECT COUNT(*) FROM members WHERE status='active'")->fetchColumn();
+    $totalEvents   = (int) $pdo->query("SELECT COUNT(*) FROM events")->fetchColumn();
+    $totalCheckIns = (int) $pdo->query("SELECT COUNT(*) FROM attendance")->fetchColumn();
+
+    // Average turnout %
+    $evRows = $pdo->query("
+        SELECT e.id, COUNT(a.id) AS attended
+        FROM events e LEFT JOIN attendance a ON e.id = a.event_id
+        GROUP BY e.id
+    ")->fetchAll();
+    $avgTurnout = 0;
+    if ($totalMembers > 0 && count($evRows) > 0) {
+        $sumPct = 0;
+        foreach ($evRows as $r) { $sumPct += ($r['attended'] / $totalMembers) * 100; }
+        $avgTurnout = round($sumPct / count($evRows), 1);
+    }
+
+    // Top event
+    $topRow = $pdo->query("
+        SELECT e.title, COUNT(a.id) AS cnt
+        FROM events e LEFT JOIN attendance a ON e.id = a.event_id
+        GROUP BY e.id, e.title ORDER BY cnt DESC LIMIT 1
+    ")->fetch();
+    $topEventName = $topRow['title'] ?? '—';
+    $topEventCnt  = (int)($topRow['cnt'] ?? 0);
+
+    // Recent 10 activities
+    $recentActivities = $pdo->query("
+        SELECT a.attended_at, m.full_name, m.member_no, ev.title
+        FROM attendance a
+        JOIN members m ON a.member_id = m.id
+        JOIN events ev ON a.event_id = ev.id
+        ORDER BY a.attended_at DESC LIMIT 10
+    ")->fetchAll();
 }
-
-// Top event
-$topRow = $pdo->query("
-    SELECT e.title, COUNT(a.id) AS cnt
-    FROM events e LEFT JOIN attendance a ON e.id = a.event_id
-    GROUP BY e.id, e.title ORDER BY cnt DESC LIMIT 1
-")->fetch();
-$topEventName = $topRow['title'] ?? '—';
-$topEventCnt  = (int)($topRow['cnt'] ?? 0);
-
-// Recent 10 activities
-$recentActivities = $pdo->query("
-    SELECT a.attended_at, m.full_name, m.member_no, ev.title
-    FROM attendance a
-    JOIN members m ON a.member_id = m.id
-    JOIN events ev ON a.event_id = ev.id
-    ORDER BY a.attended_at DESC LIMIT 10
-")->fetchAll();
 
 function getInitials($name) {
     $words = explode(' ', trim($name));

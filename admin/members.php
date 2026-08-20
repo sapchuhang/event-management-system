@@ -16,17 +16,42 @@ $search = $_GET['search'] ?? '';
 $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($page - 1) * $perPage;
 
-if ($search) {
-    $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM members WHERE full_name LIKE ? OR member_no LIKE ? OR contact LIKE ?");
-    $stmtCount->execute(["%$search%", "%$search%", "%$search%"]);
-    $totalMembers = $stmtCount->fetchColumn();
+$restrictedTables = getRestrictedTables();
+$whereParts = [];
+$params = [];
 
-    $stmt = $pdo->prepare("SELECT * FROM members WHERE full_name LIKE ? OR member_no LIKE ? OR contact LIKE ? ORDER BY {$sort} {$dir} LIMIT {$perPage} OFFSET {$offset}");
-    $stmt->execute(["%$search%", "%$search%", "%$search%"]);
-} else {
-    $totalMembers = $pdo->query("SELECT COUNT(*) FROM members")->fetchColumn();
-    $stmt = $pdo->query("SELECT * FROM members ORDER BY {$sort} {$dir} LIMIT {$perPage} OFFSET {$offset}");
+if ($search) {
+    $whereParts[] = "(full_name LIKE ? OR member_no LIKE ? OR contact LIKE ?)";
+    $params[] = "%$search%";
+    $params[] = "%$search%";
+    $params[] = "%$search%";
 }
+
+if ($restrictedTables !== null) {
+    if (empty($restrictedTables)) {
+        $whereParts[] = "1=0";
+    } else {
+        $inClause = implode(',', array_fill(0, count($restrictedTables), '?'));
+        $whereParts[] = "table_no IN ($inClause)";
+        foreach ($restrictedTables as $tbl) {
+            $params[] = $tbl;
+        }
+    }
+}
+
+$whereClause = "";
+if (!empty($whereParts)) {
+    $whereClause = "WHERE " . implode(" AND ", $whereParts);
+}
+
+$countSql = "SELECT COUNT(*) FROM members {$whereClause}";
+$stmtCount = $pdo->prepare($countSql);
+$stmtCount->execute($params);
+$totalMembers = $stmtCount->fetchColumn();
+
+$sql = "SELECT * FROM members {$whereClause} ORDER BY {$sort} {$dir} LIMIT {$perPage} OFFSET {$offset}";
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
 
 $members = $stmt->fetchAll();
 $totalPages = max(1, ceil($totalMembers / $perPage));

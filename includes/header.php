@@ -105,6 +105,12 @@
                         class="nav-link-custom <?= $currentPage == 'reports.php' ? 'active' : '' ?>">
                         <i class="fas fa-chart-bar me-3"></i> <span>Reports</span>
                     </a>
+                    <?php if (isAdmin()): ?>
+                    <a href="<?= BASE_URL ?>admin/users.php"
+                        class="nav-link-custom <?= ($currentPage == 'users.php' || $currentPage == 'add_user.php' || $currentPage == 'edit_user.php') ? 'active' : '' ?>">
+                        <i class="fas fa-user-shield me-3"></i> <span>Users</span>
+                    </a>
+                    <?php endif; ?>
                 </div>
                 <div class="sidebar-footer mt-auto pt-4">
                     <a href="<?= BASE_URL ?>logout.php" class="nav-link-custom text-danger-custom">
@@ -129,7 +135,11 @@
                         </span>
                         <div class="d-flex align-items-center ms-auto">
                             <span class="me-3 fw-medium d-none d-sm-inline">Welcome,
-                                <?= htmlspecialchars($_SESSION['admin_username'] ?? 'Admin') ?></span>
+                                <?= htmlspecialchars($_SESSION['admin_username'] ?? 'Admin') ?>
+                                <span class="badge ms-1 text-capitalize" style="font-size: 0.72rem; background-color: var(--primary); color: #fff;">
+                                    <?= htmlspecialchars($_SESSION['admin_role'] ?? 'admin') ?>
+                                </span>
+                            </span>
                             <i class="fas fa-user-circle text-success fs-3"></i>
                         </div>
                     </div>

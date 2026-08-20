@@ -26,6 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             session_regenerate_id(true);
             $_SESSION['admin_id'] = $user['id'];
             $_SESSION['admin_username'] = $user['username'];
+            $_SESSION['admin_role'] = $user['role'];
             header('Location: admin/dashboard.php');
             exit;
         } else {
