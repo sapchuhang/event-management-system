@@ -122,15 +122,15 @@ require_once '../includes/header.php';
 ?>
 
 <!-- ── Welcome Row ───────────────────────────────────────────────────────── -->
-<div class="row mb-4 align-items-center">
-    <div class="col-md-8">
-        <h3 class="fw-bold mb-1 text-primary">Welcome Back,
+<div class="page-header mb-4">
+    <div>
+        <h3 class="fw-bold mb-0" style="color: var(--primary);">Welcome Back,
             <?= htmlspecialchars($_SESSION['admin_username'] ?? 'Admin') ?></h3>
-        <p class="text-muted mb-0">Real-time analytics overview — <?= date('l, d F Y') ?></p>
+        <p class="text-muted mb-0 mt-1" style="font-size:0.875rem;">Real-time analytics overview — <?= date('l, d F Y') ?></p>
     </div>
-    <div class="col-md-4 text-md-end mt-3 mt-md-0 d-flex gap-2 justify-content-md-end">
-        <a href="reports.php"    class="btn btn-outline-secondary btn-sm"><i class="fas fa-chart-bar me-1"></i> Reports</a>
-        <a href="events.php"     class="btn btn-primary-custom btn-sm"><i class="fas fa-plus me-1"></i> New Event</a>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="reports.php" class="btn btn-outline-secondary btn-sm"><i class="fas fa-chart-bar"></i> Reports</a>
+        <a href="events.php"  class="btn btn-primary-custom btn-sm"><i class="fas fa-plus"></i> New Event</a>
     </div>
 </div>
 

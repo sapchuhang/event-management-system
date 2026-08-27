@@ -10,6 +10,9 @@ if ($event_id) {
     $stmt = $pdo->prepare("SELECT * FROM events WHERE id = ?");
     $stmt->execute([$event_id]);
     $event = $stmt->fetch();
+    if ($event && isAgmEvent($event['title'])) {
+        $event['allowance_amount'] = 500.00;
+    }
 }
 
 $all_events = [];

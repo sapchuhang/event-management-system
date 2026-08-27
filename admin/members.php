@@ -112,14 +112,18 @@ require_once '../includes/header.php';
         color: var(--secondary) !important;
     }
 </style>
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="fw-bold">Members</h4>
-    <div>
-        <a href="../actions/export_members.php" class="btn btn-outline-success me-2"><i
-                class="fas fa-download me-2"></i> Export CSV</a>
-        <button class="btn btn-outline-secondary me-2" onclick="window.print()"><i class="fas fa-print me-2"></i>
-            Print</button>
-        <a href="add_member.php" class="btn btn-primary-custom"><i class="fas fa-plus me-2"></i> Add Member</a>
+<div class="page-header mb-4">
+    <h4>Members</h4>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="../actions/export_members.php" class="btn btn-outline-success">
+            <i class="fas fa-download"></i> Export CSV
+        </a>
+        <button class="btn btn-outline-secondary" onclick="window.print()">
+            <i class="fas fa-print"></i> Print
+        </button>
+        <a href="add_member.php" class="btn btn-primary-custom">
+            <i class="fas fa-plus"></i> Add Member
+        </a>
     </div>
 </div>
 
@@ -223,7 +227,7 @@ require_once '../includes/header.php';
                         <td><span class="text-secondary"><?= htmlspecialchars($member['table_no'] ?? '-') ?></span></td>
                         <td><span class="text-secondary"><?= htmlspecialchars($member['file_number'] ?? '-') ?></span></td>
                         <td>
-                            <span class="badge bg-<?= $member['status'] == 'active' ? 'success' : 'secondary' ?>">
+                            <span class="badge <?= $member['status'] == 'active' ? 'badge-completed' : 'badge-secondary' ?>">
                                 <?= ucfirst($member['status']) ?>
                             </span>
                         </td>

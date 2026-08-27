@@ -549,7 +549,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <button type="submit" class="btn-login">
                             Login <span class="arrow">→</span>
                         </button>
-                        <a href="#" class="forgot-link" onclick="Swal.fire({title: 'Forgot Password?', text: 'Please contact the system administrator or database operator to reset your login credentials.', icon: 'info', confirmButtonColor: '#235857'}); return false;">Forgot password?</a>
+                        <a href="#" class="forgot-link"
+                            onclick="Swal.fire({title: 'Forgot Password?', text: 'Please contact the system administrator or database operator to reset your login credentials.', icon: 'info', confirmButtonColor: '#235857'}); return false;">Forgot
+                            password?</a>
                     </div>
                 </form>
             </div>

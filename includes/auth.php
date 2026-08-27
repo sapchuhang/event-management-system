@@ -139,4 +139,22 @@ function getRestrictedTables() {
     
     return $tables;
 }
+
+/**
+ * Checks if a given event title represents an AGM (Annual General Meeting)
+ * both in English and Nepali languages.
+ */
+function isAgmEvent($title) {
+    if (empty($title)) {
+        return false;
+    }
+    $titleLower = mb_strtolower($title, 'UTF-8');
+    return (
+        stripos($titleLower, 'agm') !== false ||
+        stripos($titleLower, 'वार्षिक साधारण सभा') !== false ||
+        stripos($titleLower, 'साधारण सभा') !== false ||
+        stripos($titleLower, 'annual general meeting') !== false ||
+        stripos($titleLower, 'general meeting') !== false
+    );
+}
 ?>

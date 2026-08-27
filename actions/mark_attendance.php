@@ -57,7 +57,7 @@ if ($member) {
     }
 
     // Check event allowance configs
-    $stmtEvent = $pdo->prepare("SELECT allowance_amount FROM events WHERE id = ?");
+    $stmtEvent = $pdo->prepare("SELECT title, allowance_amount FROM events WHERE id = ?");
     $stmtEvent->execute([$event_id]);
     $eventObj = $stmtEvent->fetch();
     
@@ -68,6 +68,9 @@ if ($member) {
     }
     
     $allowance = (float)$eventObj['allowance_amount'];
+    if (isAgmEvent($eventObj['title'])) {
+        $allowance = 500.00;
+    }
     $marked_by = $_SESSION['admin_id'];
     $allowance_paid = 0.00;
     $remaining = 0.00;

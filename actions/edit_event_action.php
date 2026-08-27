@@ -13,24 +13,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    $id               = $_POST['id'] ?? null;
-    $title            = trim($_POST['title'] ?? '');
-    $event_date       = trim($_POST['event_date'] ?? '');
-    $location         = trim($_POST['location'] ?? '');
-    $status           = $_POST['status'] ?? '';
+    $id = $_POST['id'] ?? null;
+    $title = trim($_POST['title'] ?? '');
+    $event_date = trim($_POST['event_date'] ?? '');
+    $location = trim($_POST['location'] ?? '');
+    $status = $_POST['status'] ?? '';
     $allowance_amount = floatval($_POST['allowance_amount'] ?? 0.00);
+
+    if (isAgmEvent($title)) {
+        $allowance_amount = 500.00;
+    }
 
     // Validate
     $errors = [];
-    if (!$id || !is_numeric($id))    $errors[] = 'Invalid Event ID.';
-    if (empty($title))               $errors[] = 'Event title is required.';
-    if (strlen($title) > 200)        $errors[] = 'Event title must be under 200 characters.';
-    if (empty($event_date))            $errors[] = 'Event date is required.';
-    if (empty($location))            $errors[] = 'Event location is required.';
-    if (strlen($location) > 200)     $errors[] = 'Location must be under 200 characters.';
+    if (!$id || !is_numeric($id))
+        $errors[] = 'Invalid Event ID.';
+    if (empty($title))
+        $errors[] = 'Event title is required.';
+    if (strlen($title) > 200)
+        $errors[] = 'Event title must be under 200 characters.';
+    if (empty($event_date))
+        $errors[] = 'Event date is required.';
+    if (empty($location))
+        $errors[] = 'Event location is required.';
+    if (strlen($location) > 200)
+        $errors[] = 'Location must be under 200 characters.';
     $allowedStatuses = ['upcoming', 'ongoing', 'completed'];
-    if (!in_array($status, $allowedStatuses)) $errors[] = 'Invalid status.';
-    if ($allowance_amount < 0) $errors[] = 'Transportation allowance cannot be negative.';
+    if (!in_array($status, $allowedStatuses))
+        $errors[] = 'Invalid status.';
+    if ($allowance_amount < 0)
+        $errors[] = 'Transportation allowance cannot be negative.';
 
     if (!empty($errors)) {
         setFlashMessage('error', implode(' ', $errors));

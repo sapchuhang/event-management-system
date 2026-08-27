@@ -23,42 +23,10 @@
     <!-- CSRF Token -->
     <meta name="csrf-token" content="<?= htmlspecialchars(generateCsrfToken()) ?>">
 
-    <style>
-        /* Mobile sidebar overlay */
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1040;
-        }
-
-        .sidebar-overlay.show {
-            display: block;
-        }
-
-        @media (max-width: 767px) {
-            .sidebar {
-                position: fixed !important;
-                top: 0;
-                left: -260px;
-                width: 240px !important;
-                height: 100vh;
-                z-index: 1050;
-                transition: left 0.3s ease;
-                overflow-y: auto;
-                display: block !important;
-                /* override d-none d-md-block */
-            }
-
-            .sidebar.mobile-open {
-                left: 0;
-            }
-        }
-    </style>
+    <!-- Sidebar overlay and mobile styles are in assets/css/style.css -->
 </head>
 
-<body class="bg-light">
+<body>
     <!-- Mobile sidebar overlay -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
@@ -136,7 +104,7 @@
                         <div class="d-flex align-items-center ms-auto">
                             <span class="me-3 fw-medium d-none d-sm-inline">Welcome,
                                 <?= htmlspecialchars($_SESSION['admin_username'] ?? 'Admin') ?>
-                                <span class="badge ms-1 text-capitalize" style="font-size: 0.72rem; background-color: var(--primary); color: #fff;">
+                                <span class="badge ms-1 text-capitalize" style="font-size: 0.7rem; background: var(--primary); color: #fff; border-radius: 5px;">
                                     <?= htmlspecialchars($_SESSION['admin_role'] ?? 'admin') ?>
                                 </span>
                             </span>
