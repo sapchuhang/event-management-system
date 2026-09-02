@@ -513,6 +513,13 @@ require_once '../includes/header.php';
                             </a>
                         </th>
                         <th>
+                            <a href="<?= getSortUrl('member_no', $sort, $dir, $search, $perPage, $statusFilter, $pageFilter, $event_id) ?>"
+                                class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
+                                <span>Member No.</span>
+                                <?= getSortIcon('member_no', $sort, $dir) ?>
+                            </a>
+                        </th>
+                        <th>
                             <a href="<?= getSortUrl('full_name', $sort, $dir, $search, $perPage, $statusFilter, $pageFilter, $event_id) ?>"
                                 class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
                                 <span>Full Name</span>
@@ -596,7 +603,7 @@ require_once '../includes/header.php';
                     <?php endforeach; ?>
                     <?php if (empty($members)): ?>
                         <tr>
-                            <td colspan="<?= $allowanceAmount > 0 ? 9 : 8 ?>" class="text-center py-4 text-muted">No attendance records found.</td>
+                            <td colspan="<?= $allowanceAmount > 0 ? 10 : 9 ?>" class="text-center py-4 text-muted">No attendance records found.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
