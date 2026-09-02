@@ -17,7 +17,7 @@ if ($restrictedTables !== null) {
 }
 
 $stmt = $pdo->prepare("
-    SELECT member_no, full_name, gender, contact, page_number, table_no, file_number, status 
+    SELECT sn, member_no, full_name, gender, contact, page_number, table_no, file_number, status 
     FROM members 
     {$whereClause}
     ORDER BY full_name ASC
@@ -29,10 +29,11 @@ header('Content-Type: text/csv; charset=utf-8');
 header('Content-Disposition: attachment; filename="members_list_' . date('Y-m-d') . '.csv"');
 
 $output = fopen('php://output', 'w');
-fputcsv($output, ['Member No', 'Full Name', 'Gender', 'Contact', 'Page No', 'Table No', 'File No', 'Status']);
+fputcsv($output, ['S.N.', 'Member No', 'Full Name', 'Gender', 'Contact', 'Page No', 'Table No', 'File No', 'Status']);
 
 foreach ($members as $member) {
     fputcsv($output, [
+        $member['sn'] ?? '',
         $member['member_no'],
         $member['full_name'],
         $member['gender'] ?? '',

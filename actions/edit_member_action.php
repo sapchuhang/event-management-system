@@ -14,6 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $id          = $_POST['id'] ?? null;
+    $sn          = isset($_POST['sn']) && $_POST['sn'] !== '' ? (int)$_POST['sn'] : null;
     $member_no   = trim($_POST['member_no'] ?? '');
     $full_name   = trim($_POST['full_name'] ?? '');
     $gender      = $_POST['gender'] ?? 'Other';
@@ -41,13 +42,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
-        $stmt = $pdo->prepare("UPDATE members SET member_no = ?, full_name = ?, gender = ?, contact = ?, page_number = ?, table_no = ?, file_number = ?, status = ?, address = ? WHERE id = ?");
-        $stmt->execute([$member_no, $full_name, $gender, $contact, $page_number, $table_no, $file_number, $status, $address, $id]);
+        $stmt = $pdo->prepare("UPDATE members SET sn = ?, member_no = ?, full_name = ?, gender = ?, contact = ?, page_number = ?, table_no = ?, file_number = ?, status = ?, address = ? WHERE id = ?");
+        $stmt->execute([$sn, $member_no, $full_name, $gender, $contact, $page_number, $table_no, $file_number, $status, $address, $id]);
         setFlashMessage('success', 'Member updated successfully!');
         header('Location: ../admin/members.php');
     } catch (PDOException $e) {
         if ($e->getCode() == 23000) {
-            setFlashMessage('error', 'Member number already exists.');
+            if (strpos($e->getMessage(), 'unique_sn') !== false || strpos($e->getMessage(), "'sn'") !== false) {
+                setFlashMessage('error', 'S.N. ' . $sn . ' is already assigned to another member. Please use a different serial number.');
+            } else {
+                setFlashMessage('error', 'Member number already exists.');
+            }
         } else {
             setFlashMessage('error', 'Database error: ' . $e->getMessage());
         }

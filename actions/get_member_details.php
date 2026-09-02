@@ -32,7 +32,7 @@ $parts = explode(' - ', $member_input);
 $member_no = trim($parts[0]);
 
 $stmt = $pdo->prepare("
-    SELECT m.id, m.member_no, m.full_name, m.contact, m.page_number, m.table_no, m.file_number, m.status, a.attended_at 
+    SELECT m.id, m.sn, m.member_no, m.full_name, m.contact, m.page_number, m.table_no, m.file_number, m.status, a.attended_at 
     FROM members m 
     LEFT JOIN attendance a ON m.id = a.member_id AND a.event_id = ?
     WHERE m.member_no = ?

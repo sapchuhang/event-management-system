@@ -63,7 +63,7 @@ if (!empty($queryParts)) {
 }
 
 $sql = "
-    SELECT m.member_no, m.full_name, m.gender, m.contact, m.page_number, m.table_no, m.file_number, a.attended_at 
+    SELECT m.sn, m.member_no, m.full_name, m.gender, m.contact, m.page_number, m.table_no, m.file_number, a.attended_at 
     FROM members m 
     LEFT JOIN attendance a ON m.id = a.member_id AND a.event_id = ?
     WHERE 1=1 {$whereClause}
@@ -77,12 +77,13 @@ header('Content-Type: text/csv; charset=utf-8');
 header('Content-Disposition: attachment; filename="attendance_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $event['title']) . '_' . date('Y-m-d') . '.csv"');
 
 $output = fopen('php://output', 'w');
-fputcsv($output, ['Member No', 'Full Name', 'Gender', 'Contact', 'Page No', 'Table No', 'File No', 'Status', 'Time']);
+fputcsv($output, ['S.N.', 'Member No', 'Full Name', 'Gender', 'Contact', 'Page No', 'Table No', 'File No', 'Status', 'Time']);
 
 foreach ($members as $member) {
     $status = $member['attended_at'] ? 'Present' : 'Absent';
     $time = $member['attended_at'] ? date('h:i A', strtotime($member['attended_at'])) : '-';
     fputcsv($output, [
+        $member['sn'] ?? '',
         $member['member_no'],
         $member['full_name'],
         $member['gender'] ?? '',

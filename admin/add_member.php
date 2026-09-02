@@ -18,12 +18,16 @@ require_once '../includes/header.php';
             <form action="../actions/add_member_action.php" method="POST">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(generateCsrfToken()) ?>">
                 <div class="row g-3">
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label fw-medium">S.N. <span class="text-muted fw-normal">(Serial No.)</span></label>
+                        <input type="number" name="sn" class="form-control" placeholder="e.g. 1" min="1">
+                    </div>
+                    <div class="col-md-5 mb-3">
                         <label class="form-label fw-medium">Member Number</label>
                         <input type="text" name="member_no" class="form-control" placeholder="e.g. 001" required
                             maxlength="50">
                     </div>
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-4 mb-3">
                         <label class="form-label fw-medium">Full Name</label>
                         <input type="text" name="full_name" class="form-control" required maxlength="100">
                     </div>

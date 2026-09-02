@@ -22,7 +22,7 @@ $all_events = $stmt_all->fetchAll();
 // ---------------------------------------------------------
 // Pagination, Sorting, and Filtering parameters
 // ---------------------------------------------------------
-$allowedSortColumns = ['member_no', 'full_name', 'contact', 'page_number', 'table_no', 'file_number', 'attended_at'];
+$allowedSortColumns = ['sn', 'member_no', 'full_name', 'contact', 'page_number', 'table_no', 'file_number', 'attended_at'];
 $sort = isset($_GET['sort']) && in_array($_GET['sort'], $allowedSortColumns) ? $_GET['sort'] : 'attended_at';
 $dir = isset($_GET['dir']) ? (strtolower($_GET['dir']) === 'desc' ? 'desc' : 'asc') : (isset($_GET['sort']) ? 'asc' : 'desc');
 
@@ -505,11 +505,11 @@ require_once '../includes/header.php';
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th>
-                            <a href="<?= getSortUrl('member_no', $sort, $dir, $search, $perPage, $statusFilter, $pageFilter, $event_id) ?>"
+                        <th style="width:60px;">
+                            <a href="<?= getSortUrl('sn', $sort, $dir, $search, $perPage, $statusFilter, $pageFilter, $event_id) ?>"
                                 class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
-                                <span>Member No.</span>
-                                <?= getSortIcon('member_no', $sort, $dir) ?>
+                                <span>S.N.</span>
+                                <?= getSortIcon('sn', $sort, $dir) ?>
                             </a>
                         </th>
                         <th>
@@ -565,6 +565,7 @@ require_once '../includes/header.php';
                         $rowClass = $member['attended_at'] ? 'present-row' : 'absent-row';
                     ?>
                         <tr id="row-<?= $member['id'] ?>" class="<?= $rowClass ?>">
+                            <td class="text-center fw-bold text-secondary"><?= $member['sn'] !== null ? htmlspecialchars($member['sn']) : '<span class="text-muted">—</span>' ?></td>
                             <td><?= htmlspecialchars($member['member_no']) ?></td>
                             <td class="fw-medium"><?= htmlspecialchars($member['full_name']) ?></td>
                             <td><?= htmlspecialchars($member['contact']) ?></td>
@@ -859,6 +860,10 @@ require_once '../includes/header.php';
                         <div class="text-start mt-2">
                             <table class="table table-striped table-bordered align-middle small mb-0">
                                 <tr>
+                                    <th class="w-35 text-secondary">S.N.</th>
+                                    <td><strong class="text-primary">${member.sn || '—'}</strong></td>
+                                </tr>
+                                <tr>
                                     <th class="w-35 text-secondary">Member No.</th>
                                     <td><strong class="text-dark">${member.member_no}</strong></td>
                                 </tr>
@@ -952,6 +957,7 @@ require_once '../includes/header.php';
                     row.id = 'row-' + member.id;
                     row.className = 'present-row';
                     row.innerHTML = `
+                        <td class="text-center fw-bold text-secondary">${member.sn || '—'}</td>
                         <td>${escapeHtml(member.member_no)}</td>
                         <td class="fw-medium">${escapeHtml(member.full_name)}</td>
                         <td>${escapeHtml(member.contact || '-')}</td>
@@ -1042,6 +1048,10 @@ require_once '../includes/header.php';
                             <div class="text-start mt-2">
                                 <p class="mb-3 text-center text-muted small">Please verify the member details before marking attendance.</p>
                                 <table class="table table-striped table-bordered align-middle small mb-0">
+                                    <tr>
+                                        <th class="w-35 text-secondary">S.N.</th>
+                                        <td><strong class="text-primary">${member.sn || '—'}</strong></td>
+                                    </tr>
                                     <tr>
                                         <th class="w-35 text-secondary">Member No.</th>
                                         <td><strong class="text-dark">${member.member_no}</strong></td>

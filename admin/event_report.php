@@ -40,7 +40,7 @@ if ($restrictedTables !== null) {
 }
 
 $stmt = $pdo->prepare("
-    SELECT m.member_no, m.full_name, m.gender, m.contact, m.page_number, m.table_no, m.file_number, a.attended_at
+    SELECT m.sn, m.member_no, m.full_name, m.gender, m.contact, m.page_number, m.table_no, m.file_number, a.attended_at
     FROM members m
     LEFT JOIN attendance a ON m.id = a.member_id AND a.event_id = ?
     WHERE 1=1 {$whereClause}
@@ -515,7 +515,7 @@ if ($allowanceActive) {
             <table class="attendance-table">
                 <thead>
                     <tr>
-                        <th>#</th>
+                        <th>S.N.</th>
                         <th>Member No.</th>
                         <th>Full Name</th>
                         <th>Gender</th>
@@ -531,7 +531,7 @@ if ($allowanceActive) {
                             $statusClass = $member['attended_at'] ? 'present-row' : 'absent-row';
                         ?>
                         <tr class="<?= $statusClass ?>">
-                            <td class="row-num"></td>
+                            <td class="row-num"><?= $member['sn'] !== null ? htmlspecialchars($member['sn']) : '—' ?></td>
                             <td><?= htmlspecialchars($member['member_no']) ?></td>
                             <td><?= htmlspecialchars($member['full_name']) ?></td>
                             <td><?= htmlspecialchars($member['gender'] ?? '-') ?></td>

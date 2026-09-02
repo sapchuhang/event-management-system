@@ -4,7 +4,7 @@ require_once '../includes/auth.php';
 requireLogin();
 
 // Whitelist and sanitise sorting parameters
-$allowedSortColumns = ['member_no', 'full_name', 'contact', 'page_number', 'table_no', 'file_number', 'status', 'id'];
+$allowedSortColumns = ['sn', 'member_no', 'full_name', 'contact', 'page_number', 'table_no', 'file_number', 'status', 'id'];
 $sort = isset($_GET['sort']) && in_array($_GET['sort'], $allowedSortColumns) ? $_GET['sort'] : 'id';
 $dir = isset($_GET['dir']) && strtolower($_GET['dir']) === 'asc' ? 'asc' : 'desc';
 
@@ -21,7 +21,8 @@ $whereParts = [];
 $params = [];
 
 if ($search) {
-    $whereParts[] = "(full_name LIKE ? OR member_no LIKE ? OR contact LIKE ?)";
+    $whereParts[] = "(full_name LIKE ? OR member_no LIKE ? OR contact LIKE ? OR sn LIKE ?)";
+    $params[] = "%$search%";
     $params[] = "%$search%";
     $params[] = "%$search%";
     $params[] = "%$search%";
@@ -169,6 +170,12 @@ require_once '../includes/header.php';
         <table class="table table-hover align-middle">
             <thead class="table-light">
                 <tr>
+                    <th style="width: 65px;">
+                        <a href="<?= getSortUrl('sn', $sort, $dir, $search, $perPage) ?>" class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
+                            <span>S.N.</span>
+                            <?= getSortIcon('sn', $sort, $dir) ?>
+                        </a>
+                    </th>
                     <th style="min-width: 130px;">
                         <a href="<?= getSortUrl('member_no', $sort, $dir, $search, $perPage) ?>" class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
                             <span>Member No.</span>
@@ -218,6 +225,7 @@ require_once '../includes/header.php';
             <tbody>
                 <?php foreach ($members as $member): ?>
                     <tr>
+                        <td class="text-center fw-bold text-secondary"><?= $member['sn'] !== null ? htmlspecialchars($member['sn']) : '<span class="text-muted">—</span>' ?></td>
                         <td><?= htmlspecialchars($member['member_no']) ?></td>
                         <td class="fw-medium"><?= htmlspecialchars($member['full_name']) ?></td>
                         <td><?= htmlspecialchars($member['contact']) ?></td>
@@ -261,7 +269,7 @@ require_once '../includes/header.php';
                 <?php endforeach; ?>
                 <?php if (empty($members)): ?>
                     <tr>
-                        <td colspan="9" class="text-center py-4 text-muted">No members found.</td>
+                        <td colspan="10" class="text-center py-4 text-muted">No members found.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>

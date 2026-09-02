@@ -14,11 +14,10 @@ unset($e);
 
 require_once '../includes/header.php';
 ?>
-<div class="page-header mb-4">
-    <h4>Events</h4>
-    <button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#addEventModal">
-        <i class="fas fa-plus"></i> New Event
-    </button>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold">Events</h4>
+    <button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#addEventModal"><i
+            class="fas fa-plus me-2"></i> New Event</button>
 </div>
 
 <div class="glass-panel p-4">
@@ -40,9 +39,11 @@ require_once '../includes/header.php';
                     <tr>
                         <td class="fw-medium">
                             <?= htmlspecialchars($event['title']) ?>
-                            <?php if ((float)$event['allowance_amount'] > 0): ?>
-                                <span class="badge bg-success-subtle text-success border border-success-subtle ms-1" style="font-size: 0.72rem;">
-                                    <i class="fas fa-money-bill-wave me-1"></i>NPR <?= number_format($event['allowance_amount'], 2) ?>
+                            <?php if ((float) $event['allowance_amount'] > 0): ?>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle ms-1"
+                                    style="font-size: 0.72rem;">
+                                    <i class="fas fa-money-bill-wave me-1"></i>NPR
+                                    <?= number_format($event['allowance_amount'], 2) ?>
                                 </span>
                             <?php endif; ?>
                         </td>
@@ -50,26 +51,27 @@ require_once '../includes/header.php';
                         <td><?= htmlspecialchars($event['location']) ?></td>
                         <td>
                             <?php
-                            $statusClass = match($event['status']) {
-                                'upcoming'  => 'badge-upcoming',
-                                'ongoing'   => 'badge-ongoing',
-                                'completed' => 'badge-completed',
-                                default     => 'badge-secondary',
-                            };
+                            $badge = 'secondary';
+                            if ($event['status'] == 'upcoming')
+                                $badge = 'primary';
+                            if ($event['status'] == 'ongoing')
+                                $badge = 'success';
+                            if ($event['status'] == 'completed')
+                                $badge = 'dark';
                             ?>
-                            <span class="badge <?= $statusClass ?>"><?= ucfirst($event['status']) ?></span>
+                            <span class="badge bg-<?= $badge ?>"><?= ucfirst($event['status']) ?></span>
                         </td>
                         <td>
-                            <a href="attendance.php?event_id=<?= $event['id'] ?>" class="btn btn-sm btn-outline-success me-1"
-                                title="Attendance">
+                            <a href="attendance.php?event_id=<?= $event['id'] ?>"
+                                class="btn btn-sm btn-outline-success me-1" title="Attendance">
                                 <i class="fas fa-clipboard-check me-1"></i>Attendance
                             </a>
                             <a href="agenda.php?event_id=<?= $event['id'] ?>" class="btn btn-sm btn-outline-info me-1"
                                 title="Agenda">
                                 <i class="fas fa-list me-1"></i>Agenda
                             </a>
-                            <a href="event_report.php?event_id=<?= $event['id'] ?>" class="btn btn-sm btn-outline-primary me-1"
-                                title="Print Report" target="_blank">
+                            <a href="event_report.php?event_id=<?= $event['id'] ?>"
+                                class="btn btn-sm btn-outline-primary me-1" title="Print Report" target="_blank">
                                 <i class="fas fa-print me-1"></i>Report
                             </a>
                             <button type="button" class="btn btn-sm btn-outline-primary me-1 btn-edit-event"
@@ -77,7 +79,7 @@ require_once '../includes/header.php';
                                 data-title="<?= htmlspecialchars($event['title']) ?>"
                                 data-date="<?= htmlspecialchars($event['event_date']) ?>"
                                 data-location="<?= htmlspecialchars($event['location']) ?>"
-                                data-status="<?= htmlspecialchars($event['status']) ?>" 
+                                data-status="<?= htmlspecialchars($event['status']) ?>"
                                 data-allowance="<?= htmlspecialchars($event['allowance_amount']) ?>" title="Edit Event">
                                 <i class="fas fa-edit me-1"></i>Edit
                             </button>
@@ -129,18 +131,15 @@ require_once '../includes/header.php';
                         <label class="form-label fw-medium">Location</label>
                         <input type="text" name="location" class="form-control" required>
                     </div>
-                    <!-- Toggle switch for Has Allowance -->
-                    <div class="mb-3 form-check form-switch">
-                        <input class="form-check-input" type="checkbox" role="switch" id="add_has_allowance" name="has_allowance" value="1">
-                        <label class="form-check-label fw-medium text-dark" for="add_has_allowance">Provide Transportation Allowance</label>
-                    </div>
-                    <div class="mb-3" id="add_allowance_container" style="display: none;">
+                    <div class="mb-3">
                         <label class="form-label fw-medium">Transportation Allowance (per member)</label>
                         <div class="input-group">
                             <span class="input-group-text">NPR</span>
-                            <input type="number" step="0.01" min="0" id="add_event_allowance_amount" name="allowance_amount" class="form-control" value="0.00" required>
+                            <input type="number" step="0.01" min="0" id="add_event_allowance_amount"
+                                name="allowance_amount" class="form-control" value="0.00" required>
                         </div>
-                        <div class="form-text text-muted">Set the amount paid to members who attend this event.</div>
+                        <div class="form-text text-muted">Set to 0.00 if this event does not provide a member allowance.
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer border-top border-light">
@@ -179,18 +178,15 @@ require_once '../includes/header.php';
                         <label class="form-label fw-medium">Location</label>
                         <input type="text" id="edit_event_location" name="location" class="form-control" required>
                     </div>
-                    <!-- Toggle switch for Has Allowance -->
-                    <div class="mb-3 form-check form-switch">
-                        <input class="form-check-input" type="checkbox" role="switch" id="edit_has_allowance" name="has_allowance" value="1">
-                        <label class="form-check-label fw-medium text-dark" for="edit_has_allowance">Provide Transportation Allowance</label>
-                    </div>
-                    <div class="mb-3" id="edit_allowance_container" style="display: none;">
+                    <div class="mb-3">
                         <label class="form-label fw-medium">Transportation Allowance (per member)</label>
                         <div class="input-group">
                             <span class="input-group-text">NPR</span>
-                            <input type="number" step="0.01" min="0" id="edit_event_allowance_amount" name="allowance_amount" class="form-control" required>
+                            <input type="number" step="0.01" min="0" id="edit_event_allowance_amount"
+                                name="allowance_amount" class="form-control" required>
                         </div>
-                        <div class="form-text text-muted">Set the amount paid to members who attend this event.</div>
+                        <div class="form-text text-muted">Set to 0.00 if this event does not provide a member allowance.
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-medium">Status</label>
