@@ -8,29 +8,43 @@ if (isLoggedIn()) {
 }
 
 $error = '';
+$active_tab = 'login'; // Default to login for Event Management System
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Validate CSRF token
     $csrf_token = $_POST['csrf_token'] ?? '';
+    $form_action = $_POST['form_action'] ?? 'login';
+
     if (!validateCsrfToken($csrf_token)) {
         $error = "Invalid CSRF token! Please try again.";
     } else {
-        $username = trim($_POST['username']);
-        $password = $_POST['password'];
-
-        $stmt = $pdo->prepare("SELECT * FROM admin_users WHERE username = ?");
-        $stmt->execute([$username]);
-        $user = $stmt->fetch();
-
-        if ($user && password_verify($password, $user['password'])) {
-            session_regenerate_id(true);
-            $_SESSION['admin_id'] = $user['id'];
-            $_SESSION['admin_username'] = $user['username'];
-            $_SESSION['admin_role'] = $user['role'];
-            header('Location: admin/dashboard.php');
-            exit;
+        if ($form_action === 'signup') {
+            $active_tab = 'signup';
+            // Self-registration notice for admin security
+            $error = "Self-registration is restricted. Please contact the administrator for event operator credentials.";
         } else {
-            $error = "Invalid username or password!";
+            $active_tab = 'login';
+            $username = trim($_POST['username'] ?? '');
+            $password = $_POST['password'] ?? '';
+
+            if (empty($username) || empty($password)) {
+                $error = "Please enter both username and password.";
+            } else {
+                $stmt = $pdo->prepare("SELECT * FROM admin_users WHERE username = ?");
+                $stmt->execute([$username]);
+                $user = $stmt->fetch();
+
+                if ($user && password_verify($password, $user['password'])) {
+                    session_regenerate_id(true);
+                    $_SESSION['admin_id'] = $user['id'];
+                    $_SESSION['admin_username'] = $user['username'];
+                    $_SESSION['admin_role'] = $user['role'];
+                    $_SESSION['last_active'] = time();
+                    header('Location: admin/dashboard.php');
+                    exit;
+                } else {
+                    $error = "Invalid username or password!";
+                }
+            }
         }
     }
 }
@@ -41,13 +55,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login – SUYOGYA SACCOS Event Management</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- SweetAlert2 -->
+    <title><?= $active_tab === 'signup' ? 'Create an account' : 'Log in' ?> &bull; SUYOGYA SACCOS Event Management</title>
+    <link rel="icon" type="image/png" href="<?= BASE_URL ?>assets/img/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
+        :root {
+            --teal-bg: #073844;
+            --teal-gradient-start: #083c4a;
+            --teal-gradient-end: #05303a;
+            --btn-teal: #083844;
+            --btn-teal-hover: #05262f;
+            --body-bg: #eceef2;
+            --input-bg: #f4f6f8;
+            --input-border: #edf0f3;
+            --input-focus-border: #083844;
+            --text-heading: #111827;
+            --text-label: #374151;
+            --text-muted: #6b7280;
+            --text-placeholder: #9ca3af;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -55,509 +86,927 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background: #eef4f4;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--body-bg);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
-            overflow: hidden;
+            padding: 1.5rem;
+            color: var(--text-heading);
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* Background corner diamonds */
-        body::before,
-        body::after {
-            content: '';
-            position: fixed;
-            width: 220px;
-            height: 220px;
-            background: linear-gradient(135deg, #235857 0%, #3B8A7F 100%);
-            opacity: 0.45;
-            border-radius: 18px;
-            z-index: 0;
-        }
-
-        body::before {
-            top: -60px;
-            right: -60px;
-            transform: rotate(20deg);
-        }
-
-        body::after {
-            bottom: -60px;
-            left: -60px;
-            transform: rotate(20deg);
-        }
-
-        .login-wrapper {
+        /* ── CARD CONTAINER ────────────────────────────────────────── */
+        .auth-card {
             display: flex;
-            width: 900px;
-            max-width: 96vw;
-            min-height: 560px;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 30px 80px rgba(35, 88, 87, 0.22);
-            position: relative;
-            z-index: 1;
-        }
-
-        /* ── LEFT PANEL ─────────────────────────────────────── */
-        .login-left {
-            flex: 0 0 45%;
-            position: relative;
-            background: linear-gradient(145deg, #1a4241 0%, #235857 45%, #3B8A7F 100%);
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            padding: 2.5rem;
-            overflow: hidden;
-            border-radius: 16px;
-            margin: 12px;
-        }
-
-        /* bokeh circles */
-        .bokeh {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(0);
-            opacity: 0.18;
-            background: rgba(255, 255, 255, 0.9);
-        }
-
-        .bokeh-1 {
-            width: 180px;
-            height: 180px;
-            top: -40px;
-            left: -40px;
-            opacity: 0.12;
-        }
-
-        .bokeh-2 {
-            width: 110px;
-            height: 110px;
-            top: 30px;
-            left: 120px;
-            opacity: 0.15;
-        }
-
-        .bokeh-3 {
-            width: 70px;
-            height: 70px;
-            top: 20px;
-            right: 40px;
-            opacity: 0.10;
-        }
-
-        .bokeh-4 {
-            width: 200px;
-            height: 200px;
-            top: 180px;
-            left: -60px;
-            opacity: 0.08;
-        }
-
-        .bokeh-5 {
-            width: 90px;
-            height: 90px;
-            top: 200px;
-            right: 10px;
-            opacity: 0.14;
-        }
-
-        .bokeh-6 {
-            width: 130px;
-            height: 130px;
-            bottom: 80px;
-            left: 60px;
-            opacity: 0.10;
-        }
-
-        .bokeh-7 {
-            width: 55px;
-            height: 55px;
-            bottom: 160px;
-            right: 30px;
-            opacity: 0.16;
-        }
-
-        .bokeh-8 {
-            width: 40px;
-            height: 40px;
-            bottom: 60px;
-            right: 90px;
-            opacity: 0.18;
-        }
-
-        /* sparkle dots */
-        .sparkle {
-            position: absolute;
-            width: 4px;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.7);
-            border-radius: 50%;
-            animation: twinkle 3s ease-in-out infinite;
-        }
-
-        @keyframes twinkle {
-
-            0%,
-            100% {
-                opacity: 0.3;
-                transform: scale(1);
-            }
-
-            50% {
-                opacity: 1;
-                transform: scale(1.6);
-            }
-        }
-
-        .sp-1 {
-            top: 15%;
-            left: 55%;
-            animation-delay: 0s;
-        }
-
-        .sp-2 {
-            top: 30%;
-            left: 75%;
-            animation-delay: 0.5s;
-        }
-
-        .sp-3 {
-            top: 50%;
-            left: 60%;
-            animation-delay: 1s;
-        }
-
-        .sp-4 {
-            top: 65%;
-            left: 82%;
-            animation-delay: 1.5s;
-        }
-
-        .sp-5 {
-            top: 80%;
-            left: 50%;
-            animation-delay: 0.8s;
-        }
-
-        .sp-6 {
-            top: 10%;
-            left: 40%;
-            animation-delay: 1.2s;
-        }
-
-        .sp-7 {
-            top: 42%;
-            left: 30%;
-            animation-delay: 0.3s;
-        }
-
-        .left-logo {
-            position: absolute;
-            top: 1.8rem;
-            left: 2rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            z-index: 2;
-        }
-
-        .left-logo img {
-            height: 34px;
-            filter: brightness(0) invert(1);
-            opacity: 0.9;
-        }
-
-        .left-logo-text {
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: rgba(255, 255, 255, 0.9);
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-        }
-
-        .left-content {
-            position: relative;
-            z-index: 2;
-        }
-
-        .left-content h1 {
-            color: #fff;
-            font-size: 1.95rem;
-            font-weight: 700;
-            line-height: 1.25;
-            margin-bottom: 1.1rem;
-        }
-
-        .left-content p {
-            color: rgba(255, 255, 255, 0.75);
-            font-size: 0.85rem;
-            line-height: 1.65;
-            max-width: 280px;
-        }
-
-        /* ── RIGHT PANEL ────────────────────────────────────── */
-        .login-right {
-            flex: 1;
+            width: 1020px;
+            max-width: 100%;
+            min-height: 580px;
             background: #ffffff;
-            display: flex;
-            flex-direction: column;
+            border-radius: 20px;
+            box-shadow: 0 20px 45px rgba(8, 48, 58, 0.12), 0 4px 12px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
             position: relative;
         }
 
-        .right-top-bar {
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            padding: 1.8rem 2.5rem 0;
-            gap: 0.75rem;
-        }
-
-        .right-top-bar span {
-            font-size: 0.82rem;
-            color: #9ca3af;
-        }
-
-        .right-form-wrap {
-            flex: 1;
+        /* ── LEFT PANEL (WHITE FORM) ───────────────────────────────── */
+        .auth-left {
+            flex: 1.05;
+            padding: 2.75rem 3.25rem 2.25rem;
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            padding: 2rem 3rem 3.5rem;
+            justify-content: space-between;
+            background: #ffffff;
+            position: relative;
+            z-index: 2;
         }
 
-        .form-group-custom {
-            margin-bottom: 1.4rem;
-        }
-
-        .form-label-custom {
-            font-size: 0.7rem;
-            font-weight: 600;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            color: #6b7280;
-            margin-bottom: 0.45rem;
-            display: block;
-        }
-
-        .form-control-custom {
-            width: 100%;
-            border: 1.5px solid #e5e7eb;
-            border-radius: 6px;
-            padding: 0.65rem 0.9rem;
-            font-size: 0.9rem;
-            color: #374151;
-            background: #fff;
-            outline: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
-            font-family: 'Inter', sans-serif;
-        }
-
-        .form-control-custom:focus {
-            border-color: #235857;
-            box-shadow: 0 0 0 3px rgba(35, 88, 87, 0.12);
-        }
-
-        .form-control-custom::placeholder {
-            color: #d1d5db;
-            font-size: 0.88rem;
-        }
-
-        .btn-login {
-            background: #235857;
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            padding: 0.7rem 2rem;
-            font-size: 0.92rem;
-            font-weight: 500;
-            cursor: pointer;
+        /* Brand Logo */
+        .brand-logo {
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
-            transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
-            font-family: 'Inter', sans-serif;
+            gap: 0.75rem;
+            text-decoration: none;
+            color: var(--btn-teal);
+            user-select: none;
+            margin-bottom: 1.5rem;
         }
 
-        .btn-login:hover {
-            background: #1a4241;
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(35, 88, 87, 0.35);
+        .brand-logo-img {
+            height: 38px;
+            width: auto;
+            object-fit: contain;
         }
 
-        .btn-login:active {
-            transform: translateY(0);
+        .brand-text-block {
+            display: flex;
+            flex-direction: column;
         }
 
-        .btn-login .arrow {
-            font-size: 1rem;
-            transition: transform 0.2s;
+        .brand-name {
+            font-size: 1.12rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            color: #083844;
+            line-height: 1.2;
         }
 
-        .btn-login:hover .arrow {
-            transform: translateX(3px);
+        .brand-tagline {
+            font-size: 0.68rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #64748b;
+        }
+
+        /* Form Header */
+        .form-heading {
+            font-size: 1.7rem;
+            font-weight: 700;
+            color: #111827;
+            letter-spacing: -0.02em;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Alert notifications */
+        .alert-box {
+            padding: 0.65rem 0.9rem;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+        }
+
+        .alert-box-error {
+            background-color: #fef2f2;
+            border: 1px solid #fee2e2;
+            color: #b91c1c;
+        }
+
+        .alert-box-warning {
+            background-color: #fffbeb;
+            border: 1px solid #fef3c7;
+            color: #b45309;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 1.05rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-label);
+            margin-bottom: 0.38rem;
+        }
+
+        .input-box-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.72rem 1rem;
+            background-color: var(--input-bg);
+            border: 1.5px solid var(--input-border);
+            border-radius: 8px;
+            font-size: 0.88rem;
+            color: #1f2937;
+            font-family: inherit;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .form-input::placeholder {
+            color: var(--text-placeholder);
+            font-size: 0.86rem;
+        }
+
+        .form-input:focus {
+            background-color: #ffffff;
+            border-color: var(--input-focus-border);
+            box-shadow: 0 0 0 3px rgba(8, 56, 68, 0.1);
+        }
+
+        .input-toggle-btn {
+            position: absolute;
+            right: 0.85rem;
+            background: none;
+            border: none;
+            color: #9ca3af;
+            cursor: pointer;
+            padding: 0.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+        }
+
+        .input-toggle-btn:hover {
+            color: #083844;
+        }
+
+        /* Terms / Remember Row */
+        .form-options-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 0.35rem;
+            margin-bottom: 1.25rem;
+            font-size: 0.8rem;
+        }
+
+        .custom-checkbox-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.55rem;
+            color: #4b5563;
+            cursor: pointer;
+            user-select: none;
+            font-size: 0.8rem;
+        }
+
+        .custom-checkbox-label input[type="checkbox"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #ffffff;
+            position: relative;
+            outline: none;
+            flex-shrink: 0;
+            transition: all 0.15s;
+        }
+
+        .custom-checkbox-label input[type="checkbox"]:checked {
+            background-color: #083844;
+            border-color: #083844;
+        }
+
+        .custom-checkbox-label input[type="checkbox"]:checked::after {
+            content: '';
+            position: absolute;
+            left: 4px;
+            top: 1.5px;
+            width: 4px;
+            height: 8px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
         }
 
         .forgot-link {
-            font-size: 0.8rem;
-            color: #9ca3af;
+            color: #083844;
             text-decoration: none;
-            margin-top: 0.9rem;
-            display: block;
-            text-align: right;
+            font-weight: 600;
+            font-size: 0.8rem;
         }
 
         .forgot-link:hover {
-            color: #235857;
+            text-decoration: underline;
         }
 
-        .btn-actions-row {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-        }
-
-        .alert-custom {
+        /* Main Submit Button */
+        .btn-main {
+            width: 100%;
+            padding: 0.78rem 1rem;
+            background-color: var(--btn-teal);
+            color: #ffffff;
+            border: none;
             border-radius: 8px;
-            padding: 0.65rem 1rem;
-            font-size: 0.84rem;
-            margin-bottom: 1.4rem;
+            font-size: 0.92rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            justify-content: center;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(8, 56, 68, 0.22);
         }
 
-        .alert-danger-custom {
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            color: #dc2626;
+        .btn-main:hover {
+            background-color: var(--btn-teal-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(8, 56, 68, 0.3);
         }
 
-        .alert-warning-custom {
-            background: #fffbeb;
-            border: 1px solid #fde68a;
-            color: #92400e;
+        .btn-main:active {
+            transform: translateY(0);
+        }
+
+        /* Or Divider */
+        .divider-row {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 1.15rem 0;
+            color: #9ca3af;
+            font-size: 0.76rem;
+        }
+
+        .divider-row::before,
+        .divider-row::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #f1f3f5;
+        }
+
+        .divider-row span {
+            padding: 0 0.75rem;
+        }
+
+        /* Social Buttons */
+        .social-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.85rem;
+            margin-bottom: 1.35rem;
+        }
+
+        .btn-social-auth {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.55rem;
+            padding: 0.65rem 0.85rem;
+            background-color: #ffffff;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 8px;
+            color: #374151;
+            font-size: 0.84rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .btn-social-auth:hover {
+            background-color: #f9fafb;
+            border-color: #d1d5db;
+        }
+
+        .btn-social-auth svg {
+            width: 17px;
+            height: 17px;
+            flex-shrink: 0;
+        }
+
+        /* Footer switch link */
+        .auth-bottom-switch {
+            text-align: center;
+            font-size: 0.8rem;
+            color: #6b7280;
+            padding-top: 0.5rem;
+        }
+
+        .auth-bottom-switch a {
+            color: #083844;
+            font-weight: 700;
+            text-decoration: none;
+            margin-left: 0.25rem;
+        }
+
+        .auth-bottom-switch a:hover {
+            text-decoration: underline;
+        }
+
+        /* ── RIGHT PANEL (DARK TEAL HERO) ──────────────────────────── */
+        .auth-right {
+            flex: 0.95;
+            background: linear-gradient(155deg, #073844 0%, #052c36 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 3rem 2.5rem;
+            position: relative;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* Corner Mosaic Tiles */
+        .mosaic-top-right {
+            position: absolute;
+            top: 22px;
+            right: 22px;
+            display: grid;
+            grid-template-columns: repeat(3, 26px);
+            gap: 12px;
+            pointer-events: none;
+        }
+
+        .mosaic-bottom-left {
+            position: absolute;
+            bottom: 22px;
+            left: 22px;
+            display: grid;
+            grid-template-columns: repeat(2, 24px);
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .tile-sq {
+            height: 26px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.09);
+        }
+
+        .tile-sq.dim {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .tile-sq.lit {
+            background: rgba(255, 255, 255, 0.16);
+        }
+
+        .tile-sq.empty {
+            background: transparent;
+        }
+
+        /* Mockup Cards Canvas */
+        .cards-mockup-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 350px;
+            height: 245px;
+            margin-bottom: 2rem;
+            z-index: 2;
+        }
+
+        /* 1. Event Analytics Floating Card */
+        .card-analytics {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 295px;
+            background: #ffffff;
+            border-radius: 14px;
+            padding: 1.1rem 1.25rem 0.9rem;
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28), 0 4px 10px rgba(0, 0, 0, 0.12);
+        }
+
+        .analytics-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.85rem;
+        }
+
+        .analytics-title {
+            font-size: 0.94rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .analytics-pills {
+            display: flex;
+            align-items: center;
+            background: #f3f4f6;
+            border-radius: 20px;
+            padding: 2px 3px;
+        }
+
+        .analytics-pill-item {
+            font-size: 0.62rem;
+            font-weight: 600;
+            color: #6b7280;
+            padding: 2px 6px;
+            border-radius: 12px;
+            text-decoration: none;
+        }
+
+        .analytics-pill-item.active {
+            background: #ffffff;
+            color: #083844;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+
+        .chart-wrap {
+            width: 100%;
+            height: 72px;
+        }
+
+        .chart-days {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.35rem 0.2rem 0;
+            border-top: 1px solid #f3f4f6;
+            margin-top: 0.2rem;
+        }
+
+        .day-label {
+            font-size: 0.62rem;
+            font-weight: 700;
+            color: #9ca3af;
+        }
+
+        /* 2. Donut Attendance Metric Card (Attendance 84%) */
+        .card-donut-metric {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 155px;
+            height: 155px;
+            background: #ffffff;
+            border-radius: 18px;
+            padding: 0.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.32), 0 6px 14px rgba(0, 0, 0, 0.15);
+            z-index: 3;
+        }
+
+        .donut-container {
+            position: relative;
+            width: 110px;
+            height: 110px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .donut-svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .donut-track {
+            fill: none;
+            stroke: #edf0f3;
+            stroke-width: 14;
+        }
+
+        .donut-bar {
+            fill: none;
+            stroke: #083844;
+            stroke-width: 14;
+            stroke-linecap: round;
+            stroke-dasharray: 283;
+            stroke-dashoffset: 45; /* ~84% turnout */
+        }
+
+        .donut-label-box {
+            position: absolute;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .donut-sub {
+            font-size: 0.7rem;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .donut-stat {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #083844;
+            line-height: 1.1;
+        }
+
+        /* Right Hero Text */
+        .right-hero-wrap {
+            text-align: center;
+            z-index: 2;
+        }
+
+        .right-title {
+            color: #ffffff;
+            font-size: 1.22rem;
+            font-weight: 700;
+            margin-bottom: 0.6rem;
+            letter-spacing: -0.01em;
+        }
+
+        .right-desc {
+            color: rgba(255, 255, 255, 0.75);
+            font-size: 0.8rem;
+            line-height: 1.55;
+            max-width: 320px;
+            margin: 0 auto;
         }
 
         /* Responsive */
-        @media (max-width: 640px) {
-            .login-wrapper {
+        @media (max-width: 880px) {
+            .auth-card {
                 flex-direction: column;
-                min-height: auto;
-                border-radius: 16px;
+                max-width: 460px;
             }
 
-            .login-left {
-                flex: 0 0 200px;
-                border-radius: 12px;
-                margin: 10px 10px 0;
-                padding: 1.8rem;
+            .auth-right {
+                order: -1;
+                padding: 2.25rem 1.5rem;
             }
 
-            .login-left .left-content h1 {
-                font-size: 1.4rem;
+            .cards-mockup-wrapper {
+                max-width: 290px;
+                height: 220px;
+                margin-bottom: 1.5rem;
             }
 
-            .right-form-wrap {
-                padding: 1.5rem 1.5rem 2rem;
+            .card-analytics {
+                width: 235px;
             }
 
-            .right-top-bar {
-                padding: 1.2rem 1.5rem 0;
+            .card-donut-metric {
+                width: 130px;
+                height: 130px;
+            }
+
+            .donut-container {
+                width: 95px;
+                height: 95px;
+            }
+
+            .auth-left {
+                padding: 2rem 1.5rem;
             }
         }
     </style>
 </head>
 
 <body>
-    <div class="login-wrapper">
 
-        <!-- ── LEFT PANEL ─────────────────────────── -->
-        <div class="login-left">
-            <!-- Bokeh circles -->
-            <div class="bokeh bokeh-1"></div>
-            <div class="bokeh bokeh-2"></div>
-            <div class="bokeh bokeh-3"></div>
-            <div class="bokeh bokeh-4"></div>
-            <div class="bokeh bokeh-5"></div>
-            <div class="bokeh bokeh-6"></div>
-            <div class="bokeh bokeh-7"></div>
-            <div class="bokeh bokeh-8"></div>
-            <!-- Sparkle dots -->
-            <div class="sparkle sp-1"></div>
-            <div class="sparkle sp-2"></div>
-            <div class="sparkle sp-3"></div>
-            <div class="sparkle sp-4"></div>
-            <div class="sparkle sp-5"></div>
-            <div class="sparkle sp-6"></div>
-            <div class="sparkle sp-7"></div>
+    <div class="auth-card">
 
-            <!-- Logo -->
-            <div class="left-logo">
-                <img src="<?= BASE_URL ?>assets/img/logo.png" alt="Logo">
-                <span class="left-logo-text">Suyogya Saccos</span>
+        <!-- ── LEFT PANEL: FORM ───────────────────────────────────────────── -->
+        <div class="auth-left">
+
+            <!-- Logo with SUYOGYA SACCOS Official Brand -->
+            <a href="login.php" class="brand-logo" title="SUYOGYA SACCOS Event Management">
+                <img src="<?= BASE_URL ?>assets/img/logo.png" alt="SUYOGYA SACCOS" class="brand-logo-img">
+                <div class="brand-text-block">
+                    <span class="brand-name">SUYOGYA SACCOS</span>
+                    <span class="brand-tagline">Event Management</span>
+                </div>
+            </a>
+
+            <!-- Form Body -->
+            <div class="form-container-inner">
+
+                <h1 class="form-heading" id="formHeading">
+                    <?= $active_tab === 'signup' ? 'Create an account' : 'Log in' ?>
+                </h1>
+
+                <!-- Timeout Notice -->
+                <?php if (isset($_GET['timeout'])): ?>
+                    <div class="alert-box alert-box-warning">
+                        <i class="fas fa-clock"></i>
+                        <span>Session expired. Please log in again.</span>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Error Notice -->
+                <?php if (!empty($error)): ?>
+                    <div class="alert-box alert-box-error">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span><?= htmlspecialchars($error) ?></span>
+                    </div>
+                <?php endif; ?>
+
+                <form method="POST" action="login.php" id="mainAuthForm">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(generateCsrfToken()) ?>">
+                    <input type="hidden" name="form_action" id="formActionInput" value="<?= htmlspecialchars($active_tab) ?>">
+
+                    <!-- Name Field (for Create Account) -->
+                    <div class="form-group" id="nameFieldWrap" style="<?= $active_tab === 'signup' ? '' : 'display: none;' ?>">
+                        <label class="form-label" for="userName">Name</label>
+                        <div class="input-box-wrapper">
+                            <input type="text" id="userName" name="name" class="form-input" placeholder="Enter your full name" autocomplete="name">
+                        </div>
+                    </div>
+
+                    <!-- Email / Username Field -->
+                    <div class="form-group">
+                        <label class="form-label" for="emailOrUserInput" id="userFieldLabel">
+                            <?= $active_tab === 'signup' ? 'Email' : 'Username' ?>
+                        </label>
+                        <div class="input-box-wrapper">
+                            <input type="text" id="emailOrUserInput" name="username" class="form-input" 
+                                placeholder="<?= $active_tab === 'signup' ? 'Enter your email' : 'Enter your username' ?>" 
+                                required autofocus autocomplete="username">
+                        </div>
+                    </div>
+
+                    <!-- Password Field -->
+                    <div class="form-group">
+                        <label class="form-label" for="passwordField">Password</label>
+                        <div class="input-box-wrapper">
+                            <input type="password" id="passwordField" name="password" class="form-input" 
+                                placeholder="Enter your password" required autocomplete="current-password">
+                            <button type="button" class="input-toggle-btn" id="togglePasswordBtn" title="Toggle password visibility">
+                                <i class="far fa-eye-slash" id="toggleIcon"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Terms Checkbox or Remember Me -->
+                    <div class="form-options-row">
+                        <label class="custom-checkbox-label">
+                            <input type="checkbox" id="termsCheck" name="terms" checked>
+                            <span id="checkboxLabelText">
+                                <?= $active_tab === 'signup' ? 'I agree to all the Terms &amp; Conditions' : 'Remember me for 30 days' ?>
+                            </span>
+                        </label>
+                        <a href="#" class="forgot-link" id="forgotLink" style="<?= $active_tab === 'signup' ? 'display: none;' : '' ?>">Forgot password?</a>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn-main" id="submitBtn">
+                        <span id="btnLabel"><?= $active_tab === 'signup' ? 'Sign up' : 'Log in' ?></span>
+                    </button>
+                </form>
+
+                <!-- Or Divider -->
+                <div class="divider-row">
+                    <span>Or</span>
+                </div>
+
+                <!-- Social / Directory Sign In Buttons -->
+                <div class="social-row">
+                    <button type="button" class="btn-social-auth" onclick="ssoNotice('Google')">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                        </svg>
+                        <span>Google</span>
+                    </button>
+
+                    <button type="button" class="btn-social-auth" onclick="ssoNotice('Facebook')">
+                        <svg viewBox="0 0 24 24" fill="#1877F2">
+                            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                        </svg>
+                        <span>Facebook</span>
+                    </button>
+                </div>
+
             </div>
 
-            <!-- Hero Text -->
-            <div class="left-content">
-                <h1>Event Management<br>Made Simple</h1>
-                <p>Manage events, track member attendance, and generate comprehensive reports — all from one
-                    powerful dashboard.</p>
+            <!-- Footer Switcher -->
+            <div class="auth-bottom-switch">
+                <span id="footerPrompt"><?= $active_tab === 'signup' ? 'Already have an account?' : "Don't have an account?" ?></span>
+                <a href="#" id="toggleLink" onclick="switchMode(event)"><?= $active_tab === 'signup' ? 'Log in' : 'Sign up' ?></a>
             </div>
+
         </div>
 
-        <!-- ── RIGHT PANEL ────────────────────────── -->
-        <div class="login-right">
-            <div class="right-top-bar">
-                <span>Admin Portal</span>
+
+        <!-- ── RIGHT PANEL: GRAPHIC & MOCKUP ─────────────────────────────── -->
+        <div class="auth-right">
+
+            <!-- Corner Mosaic Tiles (top-right) -->
+            <div class="mosaic-top-right">
+                <div class="tile-sq lit"></div>
+                <div class="tile-sq"></div>
+                <div class="tile-sq dim"></div>
+                <div class="tile-sq empty"></div>
+                <div class="tile-sq lit"></div>
+                <div class="tile-sq"></div>
+                <div class="tile-sq empty"></div>
+                <div class="tile-sq"></div>
+                <div class="tile-sq lit"></div>
             </div>
 
-            <div class="right-form-wrap">
-                <?php if (isset($_GET['timeout'])): ?>
-                    <div class="alert-custom alert-warning-custom">
-                        <i class="fas fa-clock"></i>
-                        Your session expired due to inactivity. Please log in again.
-                    </div>
-                <?php endif; ?>
-
-                <?php if ($error): ?>
-                    <div class="alert-custom alert-danger-custom">
-                        <i class="fas fa-exclamation-circle"></i>
-                        <?= htmlspecialchars($error) ?>
-                    </div>
-                <?php endif; ?>
-
-                <form method="POST" action="login.php">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(generateCsrfToken()) ?>">
-
-                    <div class="form-group-custom">
-                        <label class="form-label-custom" for="username">Username</label>
-                        <input type="text" id="username" name="username" class="form-control-custom"
-                            placeholder="Username" required autofocus autocomplete="username">
-                    </div>
-
-                    <div class="form-group-custom">
-                        <label class="form-label-custom" for="password">Password</label>
-                        <input type="password" id="password" name="password" class="form-control-custom"
-                            placeholder="Password" required autocomplete="current-password">
-                    </div>
-
-                    <div class="btn-actions-row">
-                        <button type="submit" class="btn-login">
-                            Login <span class="arrow">→</span>
-                        </button>
-                        <a href="#" class="forgot-link"
-                            onclick="Swal.fire({title: 'Forgot Password?', text: 'Please contact the system administrator or database operator to reset your login credentials.', icon: 'info', confirmButtonColor: '#235857'}); return false;">Forgot
-                            password?</a>
-                    </div>
-                </form>
+            <!-- Corner Mosaic Tiles (bottom-left) -->
+            <div class="mosaic-bottom-left">
+                <div class="tile-sq"></div>
+                <div class="tile-sq lit"></div>
+                <div class="tile-sq lit"></div>
+                <div class="tile-sq dim"></div>
             </div>
+
+            <!-- Center Visual Mockup Cards -->
+            <div class="cards-mockup-wrapper">
+
+                <!-- 1. Floating Attendance Analytics Card -->
+                <div class="card-analytics">
+                    <div class="analytics-top">
+                        <span class="analytics-title">Attendance</span>
+                        <div class="analytics-pills">
+                            <span class="analytics-pill-item active">Weekly</span>
+                            <span class="analytics-pill-item">Monthly</span>
+                            <span class="analytics-pill-item">Yearly</span>
+                        </div>
+                    </div>
+
+                    <div class="chart-wrap">
+                        <svg viewBox="0 0 250 75" style="width: 100%; height: 100%; overflow: visible;">
+                            <defs>
+                                <linearGradient id="primaryArea" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#083844" stop-opacity="0.22"/>
+                                    <stop offset="100%" stop-color="#083844" stop-opacity="0.0"/>
+                                </linearGradient>
+                                <linearGradient id="secondaryArea" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.14"/>
+                                    <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.0"/>
+                                </linearGradient>
+                            </defs>
+
+                            <!-- Guidelines -->
+                            <line x1="0" y1="20" x2="250" y2="20" stroke="#f1f5f9" stroke-width="1" />
+                            <line x1="0" y1="45" x2="250" y2="45" stroke="#f1f5f9" stroke-width="1" />
+
+                            <!-- Secondary Line (Total Registered) -->
+                            <path d="M 10 52 Q 55 42 75 30 T 145 40 T 205 25 T 240 35" 
+                                fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-linecap="round" />
+                            <path d="M 10 52 Q 55 42 75 30 T 145 40 T 205 25 T 240 35 L 240 75 L 10 75 Z" 
+                                fill="url(#secondaryArea)" />
+
+                            <!-- Primary Line (Actual Turnout) -->
+                            <path d="M 10 60 Q 45 48 75 16 T 145 35 T 200 12 T 240 20" 
+                                fill="none" stroke="#083844" stroke-width="2.2" stroke-linecap="round" />
+                            <path d="M 10 60 Q 45 48 75 16 T 145 35 T 200 12 T 240 20 L 240 75 L 10 75 Z" 
+                                fill="url(#primaryArea)" />
+
+                            <circle cx="75" cy="16" r="3" fill="#083844" />
+                        </svg>
+                    </div>
+
+                    <div class="chart-days">
+                        <span class="day-label">MON</span>
+                        <span class="day-label">TUE</span>
+                        <span class="day-label">WED</span>
+                        <span class="day-label">THU</span>
+                    </div>
+                </div>
+
+                <!-- 2. Overlapping Donut Metric Card (Turnout 84%) -->
+                <div class="card-donut-metric">
+                    <div class="donut-container">
+                        <svg class="donut-svg" viewBox="0 0 100 100">
+                            <circle class="donut-track" cx="50" cy="50" r="38" />
+                            <circle class="donut-bar" cx="50" cy="50" r="38" />
+                        </svg>
+                        <div class="donut-label-box">
+                            <span class="donut-sub">Turnout</span>
+                            <span class="donut-stat">84%</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Hero Text Tailored to Event Management -->
+            <div class="right-hero-wrap">
+                <h2 class="right-title">Smart way to manage your events</h2>
+                <p class="right-desc">
+                    Welcome to SUYOGYA SACCOS Event Management System! Efficiently organize events, track member attendance, and generate reports with ease.
+                </p>
+            </div>
+
         </div>
 
     </div>
+
+    <!-- ── INTERACTION SCRIPT ─────────────────────────────────────────── -->
+    <script>
+        // Password Visibility Toggle
+        const togglePasswordBtn = document.getElementById('togglePasswordBtn');
+        const passwordField = document.getElementById('passwordField');
+        const toggleIcon = document.getElementById('toggleIcon');
+
+        togglePasswordBtn.addEventListener('click', function () {
+            if (passwordField.type === 'password') {
+                passwordField.type = 'text';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            } else {
+                passwordField.type = 'password';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            }
+        });
+
+        // Toggle between "Create an account" and "Log in"
+        let currentMode = "<?= $active_tab === 'signup' ? 'signup' : 'login' ?>";
+
+        function switchMode(e) {
+            if (e) e.preventDefault();
+
+            const formHeading = document.getElementById('formHeading');
+            const nameWrap = document.getElementById('nameFieldWrap');
+            const userLabel = document.getElementById('userFieldLabel');
+            const userInput = document.getElementById('emailOrUserInput');
+            const checkboxLabel = document.getElementById('checkboxLabelText');
+            const forgotLink = document.getElementById('forgotLink');
+            const btnLabel = document.getElementById('btnLabel');
+            const footerPrompt = document.getElementById('footerPrompt');
+            const toggleLink = document.getElementById('toggleLink');
+            const formActionInput = document.getElementById('formActionInput');
+
+            if (currentMode === 'signup') {
+                // Switch to Log in
+                currentMode = 'login';
+                formActionInput.value = 'login';
+                formHeading.textContent = 'Log in';
+                nameWrap.style.display = 'none';
+                userLabel.textContent = 'Username';
+                userInput.placeholder = 'Enter your username';
+                checkboxLabel.textContent = 'Remember me for 30 days';
+                forgotLink.style.display = 'inline';
+                btnLabel.textContent = 'Log in';
+                footerPrompt.textContent = "Don't have an account?";
+                toggleLink.textContent = 'Sign up';
+                document.title = 'Log in • SUYOGYA SACCOS Event Management';
+            } else {
+                // Switch to Create an account
+                currentMode = 'signup';
+                formActionInput.value = 'signup';
+                formHeading.textContent = 'Create an account';
+                nameWrap.style.display = 'block';
+                userLabel.textContent = 'Email';
+                userInput.placeholder = 'Enter your email';
+                checkboxLabel.textContent = 'I agree to all the Terms & Conditions';
+                forgotLink.style.display = 'none';
+                btnLabel.textContent = 'Sign up';
+                footerPrompt.textContent = 'Already have an account?';
+                toggleLink.textContent = 'Log in';
+                document.title = 'Create an account • SUYOGYA SACCOS Event Management';
+            }
+        }
+
+        // Forgot password notice
+        document.getElementById('forgotLink').addEventListener('click', function (e) {
+            e.preventDefault();
+            Swal.fire({
+                title: 'Forgot Password?',
+                text: 'Please contact the system administrator to reset or retrieve your event portal credentials.',
+                icon: 'info',
+                confirmButtonColor: '#083844',
+                confirmButtonText: 'Understood'
+            });
+        });
+
+        // SSO notice
+        function ssoNotice(provider) {
+            Swal.fire({
+                title: provider + ' SSO',
+                text: provider + ' corporate login is available for authorized directory accounts.',
+                icon: 'info',
+                confirmButtonColor: '#083844',
+                confirmButtonText: 'Got it'
+            });
+        }
+    </script>
 </body>
 
 </html>
