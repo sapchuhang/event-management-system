@@ -279,6 +279,87 @@ require_once '../includes/header.php';
     }
 }
 </style>
+
+<style>
+    /* ── Attendance Table Card ────────────────────────────────── */
+    .attendance-table-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+    }
+
+    /* ── Filter Toolbar ───────────────────────────────────────── */
+    .attendance-toolbar {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border);
+        background: #fff;
+    }
+
+    /* ── Table Head ───────────────────────────────────────────── */
+    .attendance-table thead th {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        background: #f8fafc;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+        padding: 0.75rem 0.75rem;
+        vertical-align: middle;
+    }
+
+    /* ── Table Body ───────────────────────────────────────────── */
+    .attendance-table tbody td {
+        padding: 0.75rem 0.75rem;
+        border-color: var(--border);
+        vertical-align: middle;
+        font-size: 0.875rem;
+    }
+
+    /* First & last column edge insets */
+    .attendance-table th:first-child,
+    .attendance-table td:first-child {
+        padding-left: 1.5rem !important;
+    }
+
+    .attendance-table th:last-child,
+    .attendance-table td:last-child {
+        padding-right: 1.5rem !important;
+    }
+
+    /* ── Sort links ───────────────────────────────────────────── */
+    .attendance-table thead th a {
+        color: var(--text-muted) !important;
+        transition: color 0.15s ease;
+        text-decoration: none;
+    }
+
+    .attendance-table thead th a:hover {
+        color: var(--primary) !important;
+    }
+
+    .attendance-table thead th a:hover i {
+        opacity: 1 !important;
+    }
+
+    /* ── Row hover ────────────────────────────────────────────── */
+    .attendance-table tbody tr:hover td {
+        background-color: rgba(20, 184, 166, 0.04);
+    }
+
+    /* ── Present / Absent row subtle tint ────────────────────── */
+    .attendance-table tbody tr.absent-row td {
+        background-color: rgba(239, 68, 68, 0.02);
+    }
+
+    .attendance-table tbody tr.present-row td {
+        background-color: rgba(20, 184, 166, 0.02);
+    }
+</style>
+
 <?php if ($event): ?>
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div class="d-flex align-items-center gap-3 flex-wrap">
@@ -295,15 +376,13 @@ require_once '../includes/header.php';
                 </select>
             <?php endif; ?>
         </div>
-        <div class="d-print-none d-flex gap-2">
+        <div class="d-print-none d-flex align-items-center gap-2 flex-nowrap">
             <?php if (isAdmin() && $allowanceAmount > 0): ?>
-                <a href="event_cash.php?event_id=<?= $event_id ?>" class="btn btn-outline-primary"><i class="fas fa-coins me-2"></i> Manage Staff Cash</a>
+                <a href="event_cash.php?event_id=<?= $event_id ?>" class="btn btn-sm btn-outline-primary"><i class="fas fa-coins me-1"></i> Manage Cash</a>
             <?php endif; ?>
-            <a href="<?= htmlspecialchars($exportUrl) ?>" class="btn btn-outline-success"><i
-                    class="fas fa-download me-2"></i> Export CSV</a>
-            <button class="btn btn-outline-secondary" onclick="window.print()"><i class="fas fa-print me-2"></i>
-                Print</button>
-            <a href="events.php" class="btn btn-outline-secondary"><i class="fas fa-arrow-left me-2"></i> Back to Events</a>
+            <a href="<?= htmlspecialchars($exportUrl) ?>" class="btn btn-sm btn-outline-success"><i class="fas fa-download me-1"></i> Export CSV</a>
+            <button class="btn btn-sm btn-outline-secondary" onclick="window.print()"><i class="fas fa-print me-1"></i> Print</button>
+            <a href="events.php" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i> Back</a>
         </div>
     </div>
 <?php else: ?>
@@ -438,205 +517,204 @@ require_once '../includes/header.php';
         </div>
     </div>
 
-    <div class="glass-panel p-4">
-        <!-- Table Filters Row (d-print-none) -->
-        <form method="GET" action="" class="row g-3 mb-4 align-items-center d-print-none">
-            <input type="hidden" name="event_id" value="<?= htmlspecialchars($event_id) ?>">
-            <?php if ($sort !== 'page_number'): ?>
-                <input type="hidden" name="sort" value="<?= htmlspecialchars($sort) ?>">
-            <?php endif; ?>
-            <?php if ($dir !== 'asc'): ?>
-                <input type="hidden" name="dir" value="<?= htmlspecialchars($dir) ?>">
-            <?php endif; ?>
-
-            <div class="col-md-3 col-sm-6">
-                <label class="form-label small fw-medium text-muted mb-1">Search Table</label>
-                <input type="text" name="search" class="form-control form-control-sm" placeholder="Name, No, Contact..."
-                    value="<?= htmlspecialchars($search) ?>">
-            </div>
-
-            <div class="col-md-3 col-sm-6">
-                <label class="form-label small fw-medium text-muted mb-1">Register Page No.</label>
-                <select name="page_number" class="form-select form-select-sm">
-                    <option value="">-- All Pages --</option>
-                    <?php foreach ($uniquePageNumbers as $pNum): ?>
-                        <option value="<?= htmlspecialchars($pNum) ?>" <?= $pNum === $pageFilter ? 'selected' : '' ?>>Page
-                            <?= htmlspecialchars($pNum) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div class="col-md-3 col-sm-6">
-                <label class="form-label small fw-medium text-muted mb-1">Attendance Status</label>
-                <select name="status" class="form-select form-select-sm">
-                    <option value="">-- All Statuses --</option>
-                    <option value="present" <?= $statusFilter === 'present' ? 'selected' : '' ?>>Present</option>
-                    <option value="absent" <?= $statusFilter === 'absent' ? 'selected' : '' ?>>Absent</option>
-                </select>
-            </div>
-
-            <div class="col-md-2 col-sm-4">
-                <label class="form-label small fw-medium text-muted mb-1">Per Page</label>
-                <select name="per_page" class="form-select form-select-sm">
-                    <?php foreach ($allowedPerPages as $val): ?>
-                        <option value="<?= $val ?>" <?= $val == $perPage ? 'selected' : '' ?>><?= $val ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div class="col-md-1 col-sm-2 d-flex align-items-end gap-1 mt-4">
-                <button type="submit" class="btn btn-sm btn-primary-custom px-3" title="Apply Filter"><i
-                        class="fas fa-filter"></i></button>
-                <?php if ($search !== '' || $statusFilter !== '' || $pageFilter !== ''): ?>
-                    <a href="?event_id=<?= $event_id ?>" class="btn btn-sm btn-outline-secondary" title="Clear Filters"><i
-                            class="fas fa-times"></i></a>
+    <div class="attendance-table-card">
+        <!-- Filter Toolbar -->
+        <div class="attendance-toolbar d-print-none">
+            <form method="GET" action="" class="row g-2 align-items-end">
+                <input type="hidden" name="event_id" value="<?= htmlspecialchars($event_id) ?>">
+                <?php if ($sort !== 'page_number'): ?>
+                    <input type="hidden" name="sort" value="<?= htmlspecialchars($sort) ?>">
                 <?php endif; ?>
-            </div>
-        </form>
+                <?php if ($dir !== 'asc'): ?>
+                    <input type="hidden" name="dir" value="<?= htmlspecialchars($dir) ?>">
+                <?php endif; ?>
 
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="text-muted small">
-                Showing <?= count($members) ?> of <strong><?= number_format($totalRecords) ?></strong> members
-            </div>
+                <div class="col-md-3 col-sm-6">
+                    <label class="form-label small fw-semibold text-muted mb-1">Search Table</label>
+                    <input type="text" name="search" class="form-control form-control-sm" placeholder="Name, No, Contact..."
+                        value="<?= htmlspecialchars($search) ?>">
+                </div>
+
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-semibold text-muted mb-1">Register Page</label>
+                    <select name="page_number" class="form-select form-select-sm">
+                        <option value="">-- All Pages --</option>
+                        <?php foreach ($uniquePageNumbers as $pNum): ?>
+                            <option value="<?= htmlspecialchars($pNum) ?>" <?= $pNum === $pageFilter ? 'selected' : '' ?>>Page <?= htmlspecialchars($pNum) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-semibold text-muted mb-1">Status</label>
+                    <select name="status" class="form-select form-select-sm">
+                        <option value="">-- All Statuses --</option>
+                        <option value="present" <?= $statusFilter === 'present' ? 'selected' : '' ?>>Present</option>
+                        <option value="absent" <?= $statusFilter === 'absent' ? 'selected' : '' ?>>Absent</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2 col-sm-4">
+                    <label class="form-label small fw-semibold text-muted mb-1">Per Page</label>
+                    <select name="per_page" class="form-select form-select-sm">
+                        <?php foreach ($allowedPerPages as $val): ?>
+                            <option value="<?= $val ?>" <?= $val == $perPage ? 'selected' : '' ?>><?= $val ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="col-md-3 col-sm-4 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-sm btn-primary-custom px-3"><i class="fas fa-filter me-1"></i> Apply</button>
+                    <?php if ($search !== '' || $statusFilter !== '' || $pageFilter !== ''): ?>
+                        <a href="?event_id=<?= $event_id ?>" class="btn btn-sm btn-outline-secondary"><i class="fas fa-times me-1"></i> Clear</a>
+                    <?php endif; ?>
+                    <span class="ms-auto badge bg-light text-dark border px-3 py-2 fw-medium" style="font-size: 0.8rem; white-space: nowrap;">
+                        Total: <strong class="text-primary ms-1"><?= number_format($totalRecords) ?></strong>
+                    </span>
+                </div>
+            </form>
         </div>
 
-        <div class="table-responsive">
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
+        <!-- Table -->
+        <div class="mb-0">
+            <table class="table table-hover align-middle mb-0 attendance-table">
+                <thead>
                     <tr>
                         <th style="width:60px;">
                             <a href="<?= getSortUrl('sn', $sort, $dir, $search, $perPage, $statusFilter, $pageFilter, $event_id) ?>"
-                                class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
+                                class="d-inline-flex align-items-center gap-1">
                                 <span>S.N.</span>
                                 <?= getSortIcon('sn', $sort, $dir) ?>
                             </a>
                         </th>
-                        <th>
+                        <th style="width:130px;">
                             <a href="<?= getSortUrl('member_no', $sort, $dir, $search, $perPage, $statusFilter, $pageFilter, $event_id) ?>"
-                                class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
+                                class="d-inline-flex align-items-center gap-1">
                                 <span>Member No.</span>
                                 <?= getSortIcon('member_no', $sort, $dir) ?>
                             </a>
                         </th>
-                        <th>
+                        <th style="min-width:180px;">
                             <a href="<?= getSortUrl('full_name', $sort, $dir, $search, $perPage, $statusFilter, $pageFilter, $event_id) ?>"
-                                class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
+                                class="d-inline-flex align-items-center gap-1">
                                 <span>Full Name</span>
                                 <?= getSortIcon('full_name', $sort, $dir) ?>
                             </a>
                         </th>
-                        <th>
+                        <th style="width:130px;">
                             <a href="<?= getSortUrl('contact', $sort, $dir, $search, $perPage, $statusFilter, $pageFilter, $event_id) ?>"
-                                class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
+                                class="d-inline-flex align-items-center gap-1">
                                 <span>Contact</span>
                                 <?= getSortIcon('contact', $sort, $dir) ?>
                             </a>
                         </th>
-                        <th>
+                        <th class="text-center" style="width:90px;">
                             <a href="<?= getSortUrl('page_number', $sort, $dir, $search, $perPage, $statusFilter, $pageFilter, $event_id) ?>"
-                                class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
+                                class="d-inline-flex align-items-center justify-content-center gap-1 w-100">
                                 <span>Page No.</span>
                                 <?= getSortIcon('page_number', $sort, $dir) ?>
                             </a>
                         </th>
-                        <th>
+                        <th class="text-center" style="width:90px;">
                             <a href="<?= getSortUrl('table_no', $sort, $dir, $search, $perPage, $statusFilter, $pageFilter, $event_id) ?>"
-                                class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
+                                class="d-inline-flex align-items-center justify-content-center gap-1 w-100">
                                 <span>Table No.</span>
                                 <?= getSortIcon('table_no', $sort, $dir) ?>
                             </a>
                         </th>
-                        <th>
+                        <th class="text-center" style="width:85px;">
                             <a href="<?= getSortUrl('file_number', $sort, $dir, $search, $perPage, $statusFilter, $pageFilter, $event_id) ?>"
-                                class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
+                                class="d-inline-flex align-items-center justify-content-center gap-1 w-100">
                                 <span>File No.</span>
                                 <?= getSortIcon('file_number', $sort, $dir) ?>
                             </a>
                         </th>
-                        <th>
+                        <th style="width:140px;">
                             <a href="<?= getSortUrl('attended_at', $sort, $dir, $search, $perPage, $statusFilter, $pageFilter, $event_id) ?>"
-                                class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
-                                <span>Attendance Status</span>
+                                class="d-inline-flex align-items-center gap-1">
+                                <span>Status</span>
                                 <?= getSortIcon('attended_at', $sort, $dir) ?>
                             </a>
                         </th>
-                        <th>Time</th>
+                        <th style="width:90px;">Time</th>
                         <?php if ($allowanceAmount > 0): ?>
-                        <th>Allowance</th>
+                        <th style="width:120px;">Allowance</th>
                         <?php endif; ?>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($members as $member): 
+                    <?php foreach ($members as $member):
                         $rowClass = $member['attended_at'] ? 'present-row' : 'absent-row';
                     ?>
                         <tr id="row-<?= $member['id'] ?>" class="<?= $rowClass ?>">
                             <td class="text-center fw-bold text-secondary"><?= $member['sn'] !== null ? htmlspecialchars($member['sn']) : '<span class="text-muted">—</span>' ?></td>
-                            <td><?= htmlspecialchars($member['member_no']) ?></td>
-                            <td class="fw-medium"><?= htmlspecialchars($member['full_name']) ?></td>
+                            <td><span class="font-monospace fw-semibold text-dark"><?= htmlspecialchars($member['member_no']) ?></span></td>
+                            <td class="fw-semibold text-dark text-nowrap"><?= htmlspecialchars($member['full_name']) ?></td>
                             <td><?= htmlspecialchars($member['contact']) ?></td>
-                            <td><span class="badge bg-secondary">Page
-                                     <?= htmlspecialchars($member['page_number'] ?? '-') ?></span></td>
-                            <td><span class="text-secondary"><?= htmlspecialchars($member['table_no'] ?? '-') ?></span></td>
-                            <td><span class="text-secondary"><?= htmlspecialchars($member['file_number'] ?? '-') ?></span></td>
+                            <td class="text-center"><span class="badge bg-light text-dark border px-2 py-1 fw-semibold"><?= htmlspecialchars($member['page_number'] ?? '-') ?></span></td>
+                            <td class="text-center"><span class="fw-semibold text-dark"><?= htmlspecialchars($member['table_no'] ?? '-') ?></span></td>
+                            <td class="text-center"><span class="text-muted small"><?= htmlspecialchars($member['file_number'] ?? '-') ?></span></td>
                             <td class="status-cell">
                                 <?php if ($member['attended_at']): ?>
-                                    <span class="badge bg-success mb-1"><i class="fas fa-check me-1"></i> Present</span><br>
+                                    <span class="badge badge-completed mb-1"><i class="fas fa-check me-1"></i> Present</span><br>
                                     <a href="#" class="text-danger small text-decoration-none unmark-btn d-print-none"
                                         data-member-id="<?= $member['id'] ?>"
                                         data-name="<?= htmlspecialchars($member['full_name']) ?>"><i
                                             class="fas fa-undo me-1"></i>Undo</a>
                                 <?php else: ?>
-                                    <span class="badge bg-danger"><i class="fas fa-times me-1"></i> Absent</span>
+                                    <span class="badge badge-secondary"><i class="fas fa-times me-1"></i> Absent</span>
                                 <?php endif; ?>
                             </td>
                             <td class="text-muted small time-cell">
-                                <?= $member['attended_at'] ? date('h:i A', strtotime($member['attended_at'])) : '-' ?>
+                                <?= $member['attended_at'] ? date('h:i A', strtotime($member['attended_at'])) : '—' ?>
                             </td>
                             <?php if ($allowanceAmount > 0): ?>
                             <td class="allowance-cell font-monospace fw-medium text-success">
-                                <?= $member['attended_at'] ? 'NPR ' . number_format($member['allowance_paid'] ?? $allowanceAmount, 2) : '-' ?>
+                                <?= $member['attended_at'] ? 'NPR ' . number_format($member['allowance_paid'] ?? $allowanceAmount, 2) : '—' ?>
                             </td>
                             <?php endif; ?>
                         </tr>
                     <?php endforeach; ?>
                     <?php if (empty($members)): ?>
                         <tr>
-                            <td colspan="<?= $allowanceAmount > 0 ? 10 : 9 ?>" class="text-center py-4 text-muted">No attendance records found.</td>
+                            <td colspan="<?= $allowanceAmount > 0 ? 10 : 9 ?>" class="text-center py-5 text-muted">
+                                <i class="fas fa-search fa-2x mb-3 d-block opacity-25"></i>
+                                No attendance records found.
+                            </td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
             </table>
         </div>
 
-        <!-- Web Pagination Controls -->
+        <!-- Pagination -->
         <?php if ($totalPages > 1): ?>
-            <nav class="mt-4 d-print-none">
-                <ul class="pagination justify-content-center mb-0">
-                    <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
-                        <a class="page-link"
-                            href="<?= getPageUrl($page - 1, $sort, $dir, $perPage, $search, $statusFilter, $pageFilter, $event_id) ?>">Previous</a>
-                    </li>
-
-                    <?php
-                    $startPage = max(1, $page - 2);
-                    $endPage = min($totalPages, $page + 2);
-
-                    for ($i = $startPage; $i <= $endPage; $i++):
-                        ?>
-                        <li class="page-item <?= $i == $page ? 'active' : '' ?>">
+            <div class="p-3 px-4 border-top bg-light bg-opacity-50 d-print-none">
+                <nav>
+                    <ul class="pagination justify-content-center mb-0">
+                        <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
                             <a class="page-link"
-                                href="<?= getPageUrl($i, $sort, $dir, $perPage, $search, $statusFilter, $pageFilter, $event_id) ?>"><?= $i ?></a>
+                                href="<?= getPageUrl($page - 1, $sort, $dir, $perPage, $search, $statusFilter, $pageFilter, $event_id) ?>">Previous</a>
                         </li>
-                    <?php endfor; ?>
 
-                    <li class="page-item <?= $page >= $totalPages ? 'disabled' : '' ?>">
-                        <a class="page-link"
-                            href="<?= getPageUrl($page + 1, $sort, $dir, $perPage, $search, $statusFilter, $pageFilter, $event_id) ?>">Next</a>
-                    </li>
-                </ul>
-            </nav>
+                        <?php
+                        $startPage = max(1, $page - 2);
+                        $endPage = min($totalPages, $page + 2);
+                        for ($i = $startPage; $i <= $endPage; $i++):
+                            ?>
+                            <li class="page-item <?= $i == $page ? 'active' : '' ?>">
+                                <a class="page-link"
+                                    href="<?= getPageUrl($i, $sort, $dir, $perPage, $search, $statusFilter, $pageFilter, $event_id) ?>"><?= $i ?></a>
+                            </li>
+                        <?php endfor; ?>
+
+                        <li class="page-item <?= $page >= $totalPages ? 'disabled' : '' ?>">
+                            <a class="page-link"
+                                href="<?= getPageUrl($page + 1, $sort, $dir, $perPage, $search, $statusFilter, $pageFilter, $event_id) ?>">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
         <?php endif; ?>
     </div>
 

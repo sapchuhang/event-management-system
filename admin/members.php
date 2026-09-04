@@ -109,221 +109,335 @@ $pageTitle = 'Members';
 require_once '../includes/header.php';
 ?>
 <style>
-    .table {
+    .members-table-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+    }
+
+    /* ── Toolbar ─────────────────────────────────────── */
+    .members-toolbar {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border);
+        background: #fff;
+    }
+
+    /* ── Table Head ──────────────────────────────────── */
+    .members-table thead th {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        background: #f8fafc;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+        padding: 0.75rem 0.75rem;
+        vertical-align: middle;
+    }
+
+    /* ── Table Body ──────────────────────────────────── */
+    .members-table tbody td {
+        padding: 0.75rem 0.75rem;
+        border-color: var(--border);
+        vertical-align: middle;
         font-size: 0.875rem;
     }
 
-    th a.text-dark:hover {
-        color: var(--secondary) !important;
+    /* First & last column edge insets */
+    .members-table th:first-child,
+    .members-table td:first-child {
+        padding-left: 1.5rem !important;
+    }
+
+    .members-table th:last-child,
+    .members-table td:last-child {
+        padding-right: 1.5rem !important;
+    }
+
+    /* ── Sort links ──────────────────────────────────── */
+    .members-table thead th a {
+        color: var(--text-muted) !important;
+        transition: color 0.15s ease;
+        text-decoration: none;
+    }
+
+    .members-table thead th a:hover {
+        color: var(--primary) !important;
+    }
+
+    .members-table thead th a:hover i {
+        opacity: 1 !important;
+    }
+
+    /* ── Row hover ───────────────────────────────────── */
+    .members-table tbody tr:hover td {
+        background-color: rgba(20, 184, 166, 0.04);
     }
 </style>
+
 <div class="page-header mb-4">
     <h4>Members</h4>
     <div class="d-flex gap-2 flex-wrap">
         <a href="../actions/export_members.php" class="btn btn-outline-success">
-            <i class="fas fa-download"></i> Export CSV
+            <i class="fas fa-download me-1"></i> Export CSV
         </a>
         <button class="btn btn-outline-secondary" onclick="window.print()">
-            <i class="fas fa-print"></i> Print
+            <i class="fas fa-print me-1"></i> Print
         </button>
         <a href="add_member.php" class="btn btn-primary-custom">
-            <i class="fas fa-plus"></i> Add Member
+            <i class="fas fa-plus me-1"></i> Add Member
         </a>
     </div>
 </div>
 
-<div class="glass-panel p-4">
-    <div class="row mb-3 align-items-center g-3">
-        <div class="col-md-6 col-lg-5">
-            <form action="" method="GET" class="d-flex">
-                <?php if ($sort !== 'id'): ?>
-                    <input type="hidden" name="sort" value="<?= htmlspecialchars($sort) ?>">
-                <?php endif; ?>
-                <?php if ($dir !== 'desc'): ?>
-                    <input type="hidden" name="dir" value="<?= htmlspecialchars($dir) ?>">
-                <?php endif; ?>
-                <input type="hidden" name="per_page" value="<?= htmlspecialchars($perPage) ?>">
-                <input type="text" name="search" class="form-control me-2"
-                    placeholder="Search by name, member no, or contact..." value="<?= htmlspecialchars($search) ?>">
-                <button type="submit" class="btn btn-outline-primary"><i class="fas fa-search"></i></button>
-                <?php if ($search): ?>
-                    <a href="members.php?per_page=<?= $perPage ?>&sort=<?= $sort ?>&dir=<?= $dir ?>"
-                        class="btn btn-outline-secondary ms-2"><i class="fas fa-times"></i></a>
-                <?php endif; ?>
-            </form>
-        </div>
-        <div class="col-md-6 col-lg-7 d-flex justify-content-md-end align-items-center flex-wrap gap-3">
-            <div class="d-flex align-items-center">
-                <span class="text-muted me-2 small">Show:</span>
-                <select class="form-select form-select-sm" style="width: auto;" onchange="location = this.value;">
-                    <?php foreach ($allowedPerPages as $val): ?>
-                        <?php
-                        $params = ['per_page' => $val, 'page' => 1, 'sort' => $sort, 'dir' => $dir];
-                        if ($search !== '')
-                            $params['search'] = $search;
-                        $url = '?' . http_build_query($params);
-                        ?>
-                        <option value="<?= htmlspecialchars($url) ?>" <?= $val == $perPage ? 'selected' : '' ?>><?= $val ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-                <span class="text-muted ms-2 small">per page</span>
+<div class="members-table-card">
+    <!-- Card Toolbar -->
+    <div class="members-toolbar">
+        <div class="row align-items-center g-2">
+            <div class="col-md-6 col-lg-5">
+                <form action="" method="GET" class="m-0">
+                    <?php if ($sort !== 'id'): ?>
+                        <input type="hidden" name="sort" value="<?= htmlspecialchars($sort) ?>">
+                    <?php endif; ?>
+                    <?php if ($dir !== 'desc'): ?>
+                        <input type="hidden" name="dir" value="<?= htmlspecialchars($dir) ?>">
+                    <?php endif; ?>
+                    <input type="hidden" name="per_page" value="<?= htmlspecialchars($perPage) ?>">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light border-end-0 text-muted">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" name="search" class="form-control border-start-0"
+                            placeholder="Search by name, member no, or contact..."
+                            value="<?= htmlspecialchars($search) ?>" style="font-size: 0.85rem;">
+                        <?php if ($search): ?>
+                            <a href="members.php?per_page=<?= $perPage ?>&sort=<?= $sort ?>&dir=<?= $dir ?>"
+                                class="btn btn-sm btn-outline-secondary border-start-0" title="Clear search">
+                                <i class="fas fa-times"></i>
+                            </a>
+                        <?php endif; ?>
+                        <button type="submit" class="btn btn-sm btn-primary-custom px-3">Search</button>
+                    </div>
+                </form>
             </div>
-            <div class="text-muted">
-                Total Members: <strong class="text-dark"><?= number_format($totalMembers) ?></strong>
+            <div class="col-md-6 col-lg-7 d-flex justify-content-md-end align-items-center gap-3">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted small">Show</span>
+                    <select class="form-select form-select-sm" style="width: 72px;" onchange="location = this.value;">
+                        <?php foreach ($allowedPerPages as $val): ?>
+                            <?php
+                            $params = ['per_page' => $val, 'page' => 1, 'sort' => $sort, 'dir' => $dir];
+                            if ($search !== '')
+                                $params['search'] = $search;
+                            $url = '?' . http_build_query($params);
+                            ?>
+                            <option value="<?= htmlspecialchars($url) ?>" <?= $val == $perPage ? 'selected' : '' ?>><?= $val ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <span class="text-muted small">entries</span>
+                </div>
+                <div class="vr opacity-25 d-none d-sm-block"></div>
+                <span class="badge bg-light text-dark border px-3 py-2 fw-medium" style="font-size: 0.8rem;">
+                    Total: <strong class="text-primary ms-1"><?= number_format($totalMembers) ?></strong>
+                </span>
             </div>
         </div>
     </div>
-    <div class="table-responsive">
-        <table class="table table-hover align-middle">
-            <thead class="table-light">
+
+    <!-- Table -->
+    <div class="mb-0">
+        <table class="table table-hover align-middle mb-0 members-table">
+            <thead>
                 <tr>
-                    <th style="width: 65px;">
+                    <th class="text-center" style="width: 75px; min-width: 75px;">
                         <a href="<?= getSortUrl('sn', $sort, $dir, $search, $perPage) ?>"
-                            class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
+                            class="text-decoration-none d-inline-flex align-items-center gap-1">
                             <span>S.N.</span>
                             <?= getSortIcon('sn', $sort, $dir) ?>
                         </a>
                     </th>
-                    <th style="min-width: 130px;">
+                    <th style="width: 130px; min-width: 125px;">
                         <a href="<?= getSortUrl('member_no', $sort, $dir, $search, $perPage) ?>"
-                            class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
+                            class="text-decoration-none d-inline-flex align-items-center gap-1">
                             <span>Member No.</span>
                             <?= getSortIcon('member_no', $sort, $dir) ?>
                         </a>
                     </th>
-                    <th style="min-width: 150px;">
+                    <th style="min-width: 180px;">
                         <a href="<?= getSortUrl('full_name', $sort, $dir, $search, $perPage) ?>"
-                            class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
+                            class="text-decoration-none d-inline-flex align-items-center gap-1">
                             <span>Full Name</span>
                             <?= getSortIcon('full_name', $sort, $dir) ?>
                         </a>
                     </th>
-                    <th style="min-width: 120px;">
+                    <th style="width: 130px; min-width: 120px;">
                         <a href="<?= getSortUrl('contact', $sort, $dir, $search, $perPage) ?>"
-                            class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
+                            class="text-decoration-none d-inline-flex align-items-center gap-1">
                             <span>Contact</span>
                             <?= getSortIcon('contact', $sort, $dir) ?>
                         </a>
                     </th>
-                    <th style="min-width: 110px;">
+                    <th class="text-center" style="width: 100px; min-width: 90px;">
                         <a href="<?= getSortUrl('page_number', $sort, $dir, $search, $perPage) ?>"
-                            class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
+                            class="text-decoration-none d-inline-flex align-items-center justify-content-center gap-1 w-100">
                             <span>Page No.</span>
                             <?= getSortIcon('page_number', $sort, $dir) ?>
                         </a>
                     </th>
-                    <th style="min-width: 110px;">
+                    <th class="text-center" style="width: 100px; min-width: 90px;">
                         <a href="<?= getSortUrl('table_no', $sort, $dir, $search, $perPage) ?>"
-                            class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
+                            class="text-decoration-none d-inline-flex align-items-center justify-content-center gap-1 w-100">
                             <span>Table No.</span>
                             <?= getSortIcon('table_no', $sort, $dir) ?>
                         </a>
                     </th>
-                    <th style="min-width: 110px;">
+                    <th class="text-center" style="width: 95px; min-width: 85px;">
                         <a href="<?= getSortUrl('file_number', $sort, $dir, $search, $perPage) ?>"
-                            class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
+                            class="text-decoration-none d-inline-flex align-items-center justify-content-center gap-1 w-100">
                             <span>File No.</span>
                             <?= getSortIcon('file_number', $sort, $dir) ?>
                         </a>
                     </th>
-                    <th style="min-width: 100px;">
+                    <th class="text-center" style="width: 100px; min-width: 95px;">
                         <a href="<?= getSortUrl('status', $sort, $dir, $search, $perPage) ?>"
-                            class="text-decoration-none text-dark d-flex align-items-center justify-content-between">
+                            class="text-decoration-none d-inline-flex align-items-center justify-content-center gap-1 w-100">
                             <span>Status</span>
                             <?= getSortIcon('status', $sort, $dir) ?>
                         </a>
                     </th>
-                    <th style="min-width: 90px;" class="text-dark">Gender</th>
-                    <th class="text-dark">Actions</th>
+                    <th class="text-center" style="width: 105px; min-width: 95px;">Gender</th>
+                    <th class="text-end" style="width: 140px; min-width: 130px;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach ($members as $member): ?>
                     <tr>
-                        <td class="text-center fw-bold text-secondary">
-                            <?= $member['sn'] !== null ? htmlspecialchars($member['sn']) : '<span class="text-muted">—</span>' ?>
+                        <td class="text-center fw-semibold text-muted font-monospace small">
+                            <?= $member['sn'] !== null ? htmlspecialchars($member['sn']) : '<span class="opacity-50">—</span>' ?>
                         </td>
-                        <td><?= htmlspecialchars($member['member_no']) ?></td>
-                        <td class="fw-medium"><?= htmlspecialchars($member['full_name']) ?></td>
-                        <td><?= htmlspecialchars($member['contact']) ?></td>
-                        <td><span
-                                class="fw-bold text-secondary"><?= htmlspecialchars($member['page_number'] ?? '-') ?></span>
-                        </td>
-                        <td><span class="text-secondary"><?= htmlspecialchars($member['table_no'] ?? '-') ?></span></td>
-                        <td><span class="text-secondary"><?= htmlspecialchars($member['file_number'] ?? '-') ?></span></td>
                         <td>
+                            <span
+                                class="font-monospace fw-semibold text-dark"><?= htmlspecialchars($member['member_no']) ?></span>
+                        </td>
+                        <td class="fw-semibold text-dark text-nowrap">
+                            <?= htmlspecialchars($member['full_name']) ?>
+                        </td>
+                        <td class="text-nowrap text-muted small">
+                            <?= htmlspecialchars($member['contact'] ?: '—') ?>
+                        </td>
+                        <td class="text-center">
+                            <span
+                                class="badge bg-light text-dark border px-2 py-1 fw-semibold"><?= htmlspecialchars($member['page_number'] ?? '-') ?></span>
+                        </td>
+                        <td class="text-center">
+                            <span class="fw-semibold text-dark"><?= htmlspecialchars($member['table_no'] ?? '-') ?></span>
+                        </td>
+                        <td class="text-center">
+                            <span class="text-muted small"><?= htmlspecialchars($member['file_number'] ?? '-') ?></span>
+                        </td>
+                        <td class="text-center">
                             <span
                                 class="badge <?= $member['status'] == 'active' ? 'badge-completed' : 'badge-secondary' ?>">
                                 <?= ucfirst($member['status']) ?>
                             </span>
                         </td>
-                        <td>
+                        <td class="text-center text-nowrap">
                             <?php
                             $g = $member['gender'] ?? '';
                             if ($g === 'Male')
-                                echo '<span class="badge bg-primary-subtle text-primary border border-primary-subtle"><i class="fas fa-mars me-1"></i>Male</span>';
+                                echo '<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="fas fa-mars me-1"></i>Male</span>';
                             elseif ($g === 'Female')
-                                echo '<span class="badge bg-danger-subtle text-danger border border-danger-subtle"><i class="fas fa-venus me-1"></i>Female</span>';
+                                echo '<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1"><i class="fas fa-venus me-1"></i>Female</span>';
                             else
-                                echo '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">' . htmlspecialchars($g ?: 'N/A') . '</span>';
+                                echo '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1">' . htmlspecialchars($g ?: 'N/A') . '</span>';
                             ?>
                         </td>
-                        <td class="d-flex gap-1">
-                            <button type="button" class="btn btn-sm btn-outline-success btn-view-qr"
-                                data-member-no="<?= htmlspecialchars($member['member_no']) ?>"
-                                data-name="<?= htmlspecialchars($member['full_name']) ?>"
-                                data-contact="<?= htmlspecialchars($member['contact'] ?? 'N/A') ?>"
-                                data-page="<?= htmlspecialchars($member['page_number'] ?? 'N/A') ?>"
-                                data-table="<?= htmlspecialchars($member['table_no'] ?? 'N/A') ?>"
-                                data-file="<?= htmlspecialchars($member['file_number'] ?? 'N/A') ?>" title="View QR Ticket">
-                                <i class="fas fa-qrcode"></i>
-                            </button>
-                            <a href="edit_member.php?id=<?= $member['id'] ?>" class="btn btn-sm btn-outline-primary"><i
-                                    class="fas fa-edit"></i></a>
-                            <form method="POST" action="../actions/delete_member_action.php"
-                                onsubmit="return confirm('Are you sure you want to delete this member? This cannot be undone.');">
-                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(generateCsrfToken()) ?>">
-                                <input type="hidden" name="id" value="<?= $member['id'] ?>">
-                                <button type="submit" class="btn btn-sm btn-outline-danger"><i
-                                        class="fas fa-trash"></i></button>
-                            </form>
+                        <td class="text-end text-nowrap">
+                            <div class="d-inline-flex align-items-center justify-content-end gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-success btn-view-qr"
+                                    data-member-no="<?= htmlspecialchars($member['member_no']) ?>"
+                                    data-name="<?= htmlspecialchars($member['full_name']) ?>"
+                                    data-contact="<?= htmlspecialchars($member['contact'] ?? 'N/A') ?>"
+                                    data-page="<?= htmlspecialchars($member['page_number'] ?? 'N/A') ?>"
+                                    data-table="<?= htmlspecialchars($member['table_no'] ?? 'N/A') ?>"
+                                    data-file="<?= htmlspecialchars($member['file_number'] ?? 'N/A') ?>"
+                                    title="View QR Ticket">
+                                    <i class="fas fa-qrcode"></i>
+                                </button>
+                                <a href="edit_member.php?id=<?= $member['id'] ?>" class="btn btn-sm btn-outline-primary"
+                                    title="Edit Member">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form method="POST" action="../actions/delete_member_action.php" class="d-inline m-0"
+                                    onsubmit="return confirm('Are you sure you want to delete this member? This cannot be undone.');">
+                                    <input type="hidden" name="csrf_token"
+                                        value="<?= htmlspecialchars(generateCsrfToken()) ?>">
+                                    <input type="hidden" name="id" value="<?= $member['id'] ?>">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Member">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 <?php endforeach; ?>
                 <?php if (empty($members)): ?>
                     <tr>
-                        <td colspan="10" class="text-center py-4 text-muted">No members found.</td>
+                        <td colspan="10" class="text-center py-5 text-muted">
+                            <i class="fas fa-users-slash fs-2 mb-2 d-block opacity-25"></i>
+                            No members found.
+                        </td>
                     </tr>
                 <?php endif; ?>
             </tbody>
         </table>
     </div>
 
-    <?php if ($totalPages > 1): ?>
-        <nav class="mt-4">
-            <ul class="pagination justify-content-center mb-0">
-                <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
-                    <a class="page-link" href="<?= getPageUrl($page - 1, $sort, $dir, $perPage, $search) ?>">Previous</a>
-                </li>
+    <!-- Card Footer / Pagination -->
+    <div
+        class="p-3 px-4 border-top bg-light bg-opacity-50 d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3">
+        <div class="text-muted small">
+            <?php
+            $startCount = $totalMembers > 0 ? $offset + 1 : 0;
+            $endCount = min($offset + $perPage, $totalMembers);
+            ?>
+            Showing <strong class="text-dark"><?= number_format($startCount) ?></strong> to <strong
+                class="text-dark"><?= number_format($endCount) ?></strong> of <strong
+                class="text-dark"><?= number_format($totalMembers) ?></strong> members
+        </div>
 
-                <?php
-                $startPage = max(1, $page - 2);
-                $endPage = min($totalPages, $page + 2);
-
-                for ($i = $startPage; $i <= $endPage; $i++):
-                    ?>
-                    <li class="page-item <?= $i == $page ? 'active' : '' ?>">
-                        <a class="page-link" href="<?= getPageUrl($i, $sort, $dir, $perPage, $search) ?>"><?= $i ?></a>
+        <?php if ($totalPages > 1): ?>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= getPageUrl($page - 1, $sort, $dir, $perPage, $search) ?>">
+                            <i class="fas fa-chevron-left me-1 small"></i> Previous
+                        </a>
                     </li>
-                <?php endfor; ?>
 
-                <li class="page-item <?= $page >= $totalPages ? 'disabled' : '' ?>">
-                    <a class="page-link" href="<?= getPageUrl($page + 1, $sort, $dir, $perPage, $search) ?>">Next</a>
-                </li>
-            </ul>
-        </nav>
-    <?php endif; ?>
+                    <?php
+                    $startPage = max(1, $page - 2);
+                    $endPage = min($totalPages, $page + 2);
+
+                    for ($i = $startPage; $i <= $endPage; $i++):
+                        ?>
+                        <li class="page-item <?= $i == $page ? 'active' : '' ?>">
+                            <a class="page-link" href="<?= getPageUrl($i, $sort, $dir, $perPage, $search) ?>"><?= $i ?></a>
+                        </li>
+                    <?php endfor; ?>
+
+                    <li class="page-item <?= $page >= $totalPages ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= getPageUrl($page + 1, $sort, $dir, $perPage, $search) ?>">
+                            Next <i class="fas fa-chevron-right ms-1 small"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        <?php endif; ?>
+    </div>
 </div>
 
 <script src="../assets/js/vendor/qrcode.min.js"></script>

@@ -14,6 +14,122 @@
 <script src="<?= BASE_URL ?>assets/js/main.js"></script>
 
 <script>
+    // ── Page Transition & Progress Bar ────────────────────────
+    (function () {
+        const bar    = document.getElementById('page-progress-bar');
+        const loader = document.getElementById('page-loader');
+        if (!bar || !loader) return;
+
+        let progressTimer = null;
+        let width = 0;
+
+        // Animate the bar to a target width
+        function setProgress(w, duration) {
+            bar.style.transition = `width ${duration || 400}ms ease`;
+            bar.style.width = w + '%';
+            width = w;
+        }
+
+        // Start the indeterminate progress crawl
+        function startProgress() {
+            width = 0;
+            bar.style.transition = 'none';
+            bar.style.width = '0%';
+            bar.style.opacity = '1';
+
+            // Quickly go to 20%, then crawl slowly to 85%
+            requestAnimationFrame(() => {
+                setProgress(20, 300);
+                progressTimer = setTimeout(() => setProgress(55, 800), 320);
+                progressTimer = setTimeout(() => setProgress(75, 1000), 1200);
+                progressTimer = setTimeout(() => setProgress(85, 600), 2300);
+            });
+        }
+
+        // Complete and hide the bar
+        function finishProgress() {
+            clearTimeout(progressTimer);
+            setProgress(100, 250);
+            setTimeout(() => {
+                bar.style.transition = 'opacity 0.3s ease';
+                bar.style.opacity = '0';
+                setTimeout(() => {
+                    bar.style.transition = 'none';
+                    bar.style.width = '0%';
+                    bar.style.opacity = '1';
+                }, 350);
+            }, 280);
+        }
+
+        // Show loader overlay
+        function showLoader() {
+            loader.classList.add('active');
+        }
+
+        // Hide loader overlay
+        function hideLoader() {
+            loader.classList.remove('active');
+        }
+
+        // Intercept link clicks for page transition
+        document.addEventListener('click', function (e) {
+            // Find closest anchor tag
+            const link = e.target.closest('a');
+            if (!link) return;
+
+            const href = link.getAttribute('href');
+            if (!href) return;
+
+            // Skip: modifier keys, new tab, download, hash-only, external, mailto/tel, javascript:
+            if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+            if (link.target === '_blank') return;
+            if (link.hasAttribute('download')) return;
+            if (href.startsWith('#')) return;
+            if (href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('javascript:')) return;
+
+            // Skip external links
+            try {
+                const url = new URL(href, window.location.href);
+                if (url.origin !== window.location.origin) return;
+            } catch (_) { return; }
+
+            // Show transition
+            startProgress();
+            showLoader();
+        });
+
+        // Intercept form submits
+        document.addEventListener('submit', function (e) {
+            const form = e.target;
+            // Skip forms that open in new tab or are file downloads
+            if (form.target === '_blank') return;
+            startProgress();
+            showLoader();
+        });
+
+        // On page fully loaded: complete progress bar and hide loader
+        window.addEventListener('load', function () {
+            finishProgress();
+            hideLoader();
+        });
+
+        // Safety: if page is already loaded (cached)
+        if (document.readyState === 'complete') {
+            finishProgress();
+            hideLoader();
+        }
+
+        // Handle browser back/forward
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted) {
+                finishProgress();
+                hideLoader();
+            }
+        });
+    })();
+</script>
+
+<script>
     // ── Mobile sidebar toggle ──────────────────────────────
     (function () {
         const sidebar = document.getElementById('mainSidebar');
