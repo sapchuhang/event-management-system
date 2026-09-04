@@ -354,9 +354,9 @@ document.addEventListener('DOMContentLoaded', function () {
     /* ── Shared chart theme ───────────────────────────────────────────── */
     const tooltipDefaults = {
         padding: 12, cornerRadius: 8,
-        backgroundColor: '#0d2423', titleColor: '#fff', bodyColor: '#fff',
+        backgroundColor: '#05262f', titleColor: '#fff', bodyColor: '#fff',
     };
-    const tickFont = { family: 'Inter', size: 11 };
+    const tickFont = { family: 'Plus Jakarta Sans', size: 11 };
     const gridColor = 'rgba(0,0,0,0.05)';
 
     /* ── 1. Monthly Trend Chart ───────────────────────────────────────── */
@@ -365,8 +365,8 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(d => {
             const ctx = document.getElementById('monthlyTrendChart').getContext('2d');
             const grad = ctx.createLinearGradient(0, 0, 0, 270);
-            grad.addColorStop(0, 'rgba(43,115,112,0.35)');
-            grad.addColorStop(1, 'rgba(43,115,112,0.01)');
+            grad.addColorStop(0, 'rgba(8,56,68,0.35)');
+            grad.addColorStop(1, 'rgba(8,56,68,0.01)');
             new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -374,11 +374,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     datasets: [{
                         label: 'Check-ins',
                         data: d.data,
-                        borderColor: '#2b7370',
+                        borderColor: '#083844',
                         backgroundColor: grad,
                         borderWidth: 2.5,
                         fill: true, tension: 0.45,
-                        pointBackgroundColor: '#2b7370',
+                        pointBackgroundColor: '#083844',
                         pointBorderColor: '#fff', pointBorderWidth: 2,
                         pointRadius: 4, pointHoverRadius: 6,
                     }]
@@ -400,7 +400,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(d => {
             const labels  = ['Upcoming', 'Ongoing', 'Completed'];
             const values  = [d.upcoming, d.ongoing, d.completed];
-            const colors  = ['#3b82f6', '#f59e0b', '#10b981'];
+            const colors  = ['#3b82f6', '#f59e0b', '#083844'];
             const ctx = document.getElementById('eventStatusChart').getContext('2d');
             new Chart(ctx, {
                 type: 'doughnut',
@@ -458,8 +458,8 @@ document.addEventListener('DOMContentLoaded', function () {
     /* ── 4. Classic Event Turnout (last 6) ───────────────────────────── */
     const turnoutCtx = document.getElementById('turnoutChart').getContext('2d');
     const tGrad = turnoutCtx.createLinearGradient(0, 0, 0, 200);
-    tGrad.addColorStop(0, 'rgba(43,115,112,0.35)');
-    tGrad.addColorStop(1, 'rgba(43,115,112,0.01)');
+    tGrad.addColorStop(0, 'rgba(8,56,68,0.35)');
+    tGrad.addColorStop(1, 'rgba(8,56,68,0.01)');
     new Chart(turnoutCtx, {
         type: 'line',
         data: {
@@ -467,9 +467,9 @@ document.addEventListener('DOMContentLoaded', function () {
             datasets: [{
                 label: 'Attended',
                 data: <?= $turnoutData ?>,
-                borderColor: '#2b7370', backgroundColor: tGrad,
+                borderColor: '#083844', backgroundColor: tGrad,
                 borderWidth: 2.5, fill: true, tension: 0.4,
-                pointBackgroundColor: '#2b7370', pointBorderColor: '#fff',
+                pointBackgroundColor: '#083844', pointBorderColor: '#fff',
                 pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 6,
             }]
         },

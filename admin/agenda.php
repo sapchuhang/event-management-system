@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded', function () {
             `,
             showConfirmButton: true,
             confirmButtonText: 'Close',
-            confirmButtonColor: '#235857'
+            confirmButtonColor: '#083844'
         });
     });
 });

@@ -50,13 +50,13 @@ function requireAdmin() {
             <title>403 Forbidden – Access Denied</title>
             <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+            <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
             <style>
-                body { font-family: 'Inter', sans-serif; background-color: #f8fafc; height: 100vh; display: flex; align-items: center; justify-content: center; }
+                body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #eceef2; height: 100vh; display: flex; align-items: center; justify-content: center; }
                 .card { border: none; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); max-width: 450px; text-align: center; padding: 2.5rem; background: #fff; }
                 .icon { font-size: 4rem; color: #dc2626; margin-bottom: 1.5rem; }
-                .btn-home { background-color: #1e4644; color: #fff; border-radius: 8px; padding: 0.6rem 1.5rem; font-weight: 500; transition: background 0.2s; border: none; }
-                .btn-home:hover { background-color: #0d2423; color: #fff; }
+                .btn-home { background-color: #083844; color: #fff; border-radius: 8px; padding: 0.6rem 1.5rem; font-weight: 500; transition: background 0.2s; border: none; }
+                .btn-home:hover { background-color: #05262f; color: #fff; }
             </style>
         </head>
         <body>

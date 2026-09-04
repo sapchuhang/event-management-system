@@ -106,17 +106,20 @@ if ($allowanceActive) {
     <title>Event Report – <?= htmlspecialchars($event['title']) ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #235857;
-            --secondary: #3B8A7F;
-            --light: #D3D9D4;
+            --primary: #083844;
+            --secondary: #14b8a6;
+            --light: #e2edf0;
         }
 
         body {
-            font-family: 'Segoe UI', sans-serif;
-            background: #f4f6f8;
-            color: #1a1a2e;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #eceef2;
+            color: #111827;
         }
 
         .report-wrapper {
@@ -423,11 +426,11 @@ if ($allowanceActive) {
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:28px;">
                 <div
                     style="background:#e8f4ff; border:1px solid #b8d8f8; border-radius:8px; padding:14px 16px; display:flex; align-items:center; gap:14px;">
-                    <i class="fas fa-mars" style="font-size:2rem; color:#235857;"></i>
+                    <i class="fas fa-mars" style="font-size:2rem; color:#083844;"></i>
                     <div>
                         <div style="font-size:0.7rem; text-transform:uppercase; color:#6c757d; font-weight:600;">Male
                         </div>
-                        <div style="font-size:1.5rem; font-weight:700; color:#235857;"><?= $malePresent ?> <span
+                        <div style="font-size:1.5rem; font-weight:700; color:#083844;"><?= $malePresent ?> <span
                                 style="font-size:0.9rem; color:#6c757d; font-weight:400;">/ <?= $maleTotal ?>
                                 attended</span></div>
                     </div>

@@ -273,7 +273,7 @@ require_once '../includes/header.php';
         <div class="table-responsive">
             <table id="reportsTable" class="table table-hover align-middle mb-0">
                 <thead>
-                    <tr style="background:linear-gradient(135deg,#1e4644,#2b7370);color:#fff;">
+                    <tr style="background:linear-gradient(135deg,#073844,#0b4554);color:#fff;">
                         <th class="px-4 py-3 sortable" data-col="title">Event <i class="fas fa-sort ms-1 small opacity-50"></i></th>
                         <th class="sortable" data-col="date">Date <i class="fas fa-sort ms-1 small opacity-50"></i></th>
                         <th>Location</th>

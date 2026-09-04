@@ -854,7 +854,7 @@ require_once '../includes/header.php';
                         icon: 'warning',
                         title: 'Already Marked Present',
                         html: `<strong>${member.full_name}</strong> (No. ${member.member_no}) has already marked attendance.`,
-                        confirmButtonColor: '#235857'
+                        confirmButtonColor: '#083844'
                     }).then(() => {
                         if (html5QrCode) html5QrCode.resume();
                     });
@@ -896,7 +896,7 @@ require_once '../includes/header.php';
                         </div>
                     `,
                     showCancelButton: true,
-                    confirmButtonColor: '#235857',
+                    confirmButtonColor: '#083844',
                     cancelButtonColor: '#6c757d',
                     confirmButtonText: 'Confirm & Mark Present',
                     cancelButtonText: 'Cancel'
@@ -1043,7 +1043,7 @@ require_once '../includes/header.php';
                                 icon: 'warning',
                                 title: 'Already Marked Present',
                                 html: `<strong>${member.full_name}</strong> (No. ${member.member_no}) has already marked attendance at <strong>${member.attended_at}</strong>.`,
-                                confirmButtonColor: '#235857'
+                                confirmButtonColor: '#083844'
                             });
                             return;
                         }
@@ -1093,7 +1093,7 @@ require_once '../includes/header.php';
                             </div>
                         `,
                             showCancelButton: true,
-                            confirmButtonColor: '#235857',
+                            confirmButtonColor: '#083844',
                             cancelButtonColor: '#6c757d',
                             confirmButtonText: '<i class="fas fa-check-circle me-1"></i> Confirm & Mark Present',
                             cancelButtonText: 'Cancel',

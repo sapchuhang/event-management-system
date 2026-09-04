@@ -10,6 +10,11 @@
     <title><?= htmlspecialchars($pageTitle ?? 'Event Management System') ?> – SUYOGYA SACCOS</title>
     <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>assets/img/logo.png">
 
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
@@ -108,7 +113,7 @@
                                     <?= htmlspecialchars($_SESSION['admin_role'] ?? 'admin') ?>
                                 </span>
                             </span>
-                            <i class="fas fa-user-circle text-success fs-3"></i>
+                            <i class="fas fa-user-circle fs-3" style="color: var(--primary);"></i>
                         </div>
                     </div>
                 </nav>
