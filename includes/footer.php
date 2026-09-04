@@ -14,117 +14,121 @@
 <script src="<?= BASE_URL ?>assets/js/main.js"></script>
 
 <script>
-    // ── Page Transition & Progress Bar ────────────────────────
+    // ── Non-intrusive Top Progress Bar for Page Transitions ────────
     (function () {
-        const bar    = document.getElementById('page-progress-bar');
-        const loader = document.getElementById('page-loader');
-        if (!bar || !loader) return;
+        const bar = document.getElementById('page-progress-bar');
+        if (!bar) return;
 
         let progressTimer = null;
-        let width = 0;
+        let safetyTimer = null;
 
-        // Animate the bar to a target width
-        function setProgress(w, duration) {
-            bar.style.transition = `width ${duration || 400}ms ease`;
+        function setWidth(w, duration) {
+            bar.style.transition = `width ${duration || 300}ms cubic-bezier(0.1, 0.9, 0.2, 1), opacity 0.2s ease`;
             bar.style.width = w + '%';
-            width = w;
         }
 
-        // Start the indeterminate progress crawl
         function startProgress() {
-            width = 0;
+            clearTimeout(progressTimer);
+            clearTimeout(safetyTimer);
+
             bar.style.transition = 'none';
             bar.style.width = '0%';
             bar.style.opacity = '1';
 
-            // Quickly go to 20%, then crawl slowly to 85%
+            // Smoothly animate towards 85%
             requestAnimationFrame(() => {
-                setProgress(20, 300);
-                progressTimer = setTimeout(() => setProgress(55, 800), 320);
-                progressTimer = setTimeout(() => setProgress(75, 1000), 1200);
-                progressTimer = setTimeout(() => setProgress(85, 600), 2300);
+                setWidth(25, 200);
+                progressTimer = setTimeout(() => setWidth(65, 500), 220);
+                progressTimer = setTimeout(() => setWidth(85, 800), 750);
             });
+
+            // Safety timeout: if page doesn't unload within 3.5 seconds (e.g. download or aborted nav), reset smoothly
+            safetyTimer = setTimeout(() => {
+                finishProgress();
+            }, 3500);
         }
 
-        // Complete and hide the bar
         function finishProgress() {
             clearTimeout(progressTimer);
-            setProgress(100, 250);
+            clearTimeout(safetyTimer);
+
+            setWidth(100, 200);
             setTimeout(() => {
-                bar.style.transition = 'opacity 0.3s ease';
+                bar.style.transition = 'opacity 0.25s ease';
                 bar.style.opacity = '0';
                 setTimeout(() => {
                     bar.style.transition = 'none';
                     bar.style.width = '0%';
-                    bar.style.opacity = '1';
-                }, 350);
-            }, 280);
+                }, 260);
+            }, 220);
         }
 
-        // Show loader overlay
-        function showLoader() {
-            loader.classList.add('active');
-        }
-
-        // Hide loader overlay
-        function hideLoader() {
-            loader.classList.remove('active');
-        }
-
-        // Intercept link clicks for page transition
+        // Intercept legitimate internal navigation links only
         document.addEventListener('click', function (e) {
-            // Find closest anchor tag
+            // If another script called e.preventDefault(), do not trigger loader
+            if (e.defaultPrevented) return;
+
+            // Only respond to main left click
+            if (e.button !== 0) return;
+
+            // Skip if user holds modifier keys (new tab, new window, save link)
+            if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+
             const link = e.target.closest('a');
             if (!link) return;
+
+            // Skip links explicitly intended for actions/modals/toggles
+            if (link.hasAttribute('data-bs-toggle') ||
+                link.hasAttribute('data-bs-target') ||
+                link.getAttribute('role') === 'button' ||
+                link.classList.contains('dropdown-toggle') ||
+                link.hasAttribute('onclick')) {
+                return;
+            }
 
             const href = link.getAttribute('href');
             if (!href) return;
 
-            // Skip: modifier keys, new tab, download, hash-only, external, mailto/tel, javascript:
-            if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
-            if (link.target === '_blank') return;
-            if (link.hasAttribute('download')) return;
-            if (href.startsWith('#')) return;
-            if (href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('javascript:')) return;
+            // Skip non-navigating links
+            if (href === '#' || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) {
+                return;
+            }
 
-            // Skip external links
+            // Skip downloads & exports
+            if (link.hasAttribute('download') || href.includes('export_') || href.match(/\.(csv|xlsx|pdf|zip|txt)($|\?)/i)) {
+                return;
+            }
+
+            // Skip target _blank
+            if (link.target === '_blank') return;
+
+            // Check origin
             try {
                 const url = new URL(href, window.location.href);
                 if (url.origin !== window.location.origin) return;
-            } catch (_) { return; }
-
-            // Show transition
-            startProgress();
-            showLoader();
-        });
-
-        // Intercept form submits
-        document.addEventListener('submit', function (e) {
-            const form = e.target;
-            // Skip forms that open in new tab or are file downloads
-            if (form.target === '_blank') return;
-            startProgress();
-            showLoader();
-        });
-
-        // On page fully loaded: complete progress bar and hide loader
-        window.addEventListener('load', function () {
-            finishProgress();
-            hideLoader();
-        });
-
-        // Safety: if page is already loaded (cached)
-        if (document.readyState === 'complete') {
-            finishProgress();
-            hideLoader();
-        }
-
-        // Handle browser back/forward
-        window.addEventListener('pageshow', function (e) {
-            if (e.persisted) {
-                finishProgress();
-                hideLoader();
+                // Skip if exact same URL including hash
+                if (url.href === window.location.href) return;
+            } catch (_) {
+                return;
             }
+
+            // Start smooth top bar
+            startProgress();
+        });
+
+        // Also trigger on select dropdown changes that navigate via location = ...
+        document.addEventListener('change', function(e) {
+            const select = e.target.closest('select');
+            if (select && select.hasAttribute('onchange') && select.getAttribute('onchange').includes('location')) {
+                startProgress();
+            }
+        });
+
+        // On page load/restore
+        window.addEventListener('load', finishProgress);
+        if (document.readyState === 'complete') finishProgress();
+        window.addEventListener('pageshow', function (e) {
+            finishProgress();
         });
     })();
 </script>

@@ -30,115 +30,30 @@
 
     <!-- Page transition & top progress bar -->
     <style>
-        /* ── Top Progress Bar ───────────────────────────────────── */
+        /* ── Top Progress Bar (YouTube/GitHub-style) ─────────────── */
         #page-progress-bar {
             position: fixed;
             top: 0;
             left: 0;
             width: 0%;
             height: 3px;
-            background: linear-gradient(90deg, #14b8a6, #083844, #14b8a6);
-            background-size: 200% 100%;
+            background: linear-gradient(90deg, #0d9488, #14b8a6, #2dd4bf);
             z-index: 99999;
-            transition: width 0.4s ease;
-            animation: progressShimmer 1.4s linear infinite;
-            border-radius: 0 2px 2px 0;
-            box-shadow: 0 0 10px rgba(20, 184, 166, 0.6);
-        }
-
-        @keyframes progressShimmer {
-            0%   { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
-
-        /* ── Page Transition Overlay ────────────────────────────── */
-        #page-loader {
-            position: fixed;
-            inset: 0;
-            background: rgba(8, 56, 68, 0.18);
-            backdrop-filter: blur(3px);
-            -webkit-backdrop-filter: blur(3px);
-            z-index: 99998;
-            opacity: 0;
             pointer-events: none;
-            transition: opacity 0.25s ease;
-        }
-
-        #page-loader.active {
-            opacity: 1;
-            pointer-events: all;
-        }
-
-        /* ── Spinner inside overlay ─────────────────────────────── */
-        #page-loader-spinner {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 16px;
             opacity: 0;
-            transition: opacity 0.2s ease 0.1s;
+            border-radius: 0 2px 2px 0;
+            box-shadow: 0 0 10px rgba(20, 184, 166, 0.7), 0 0 5px rgba(20, 184, 166, 0.4);
+            transition: width 0.3s cubic-bezier(0.1, 0.9, 0.2, 1), opacity 0.25s ease;
         }
 
-        #page-loader.active #page-loader-spinner {
-            opacity: 1;
-        }
-
-        .loader-ring {
-            width: 48px;
-            height: 48px;
-            border: 3px solid rgba(20, 184, 166, 0.2);
-            border-top-color: #14b8a6;
-            border-radius: 50%;
-            animation: spin 0.75s linear infinite;
-        }
-
-        .loader-ring-outer {
-            width: 64px;
-            height: 64px;
-            border: 2px solid rgba(8, 56, 68, 0.12);
-            border-bottom-color: #083844;
-            border-radius: 50%;
-            animation: spin 1.2s linear infinite reverse;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .loader-ring-wrap {
-            position: relative;
-            width: 64px;
-            height: 64px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .loader-text {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: #083844;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            opacity: 0.7;
-        }
-
-        /* ── Page fade-in on load ───────────────────────────────── */
-        @keyframes pageFadeIn {
-            from { opacity: 0; transform: translateY(6px); }
-            to   { opacity: 1; transform: translateY(0); }
+        /* ── Smooth subtle page content fade-in ─────────────────── */
+        @keyframes pageContentFadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
         }
 
         .main-content {
-            animation: pageFadeIn 0.35s ease both;
+            animation: pageContentFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
     </style>
 </head>
@@ -146,17 +61,6 @@
 <body>
     <!-- Top progress bar -->
     <div id="page-progress-bar"></div>
-
-    <!-- Page transition overlay -->
-    <div id="page-loader">
-        <div id="page-loader-spinner">
-            <div class="loader-ring-wrap">
-                <div class="loader-ring"></div>
-                <div class="loader-ring-outer"></div>
-            </div>
-            <span class="loader-text">Loading…</span>
-        </div>
-    </div>
 
     <!-- Mobile sidebar overlay -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
