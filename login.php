@@ -39,7 +39,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['admin_username'] = $user['username'];
                     $_SESSION['admin_role'] = $user['role'];
                     $_SESSION['last_active'] = time();
-                    header('Location: admin/dashboard.php');
+                    if ($user['role'] === 'viewer') {
+                        header('Location: admin/tab_member_search.php');
+                    } else {
+                        header('Location: admin/dashboard.php');
+                    }
                     exit;
                 } else {
                     $error = "Invalid username or password!";

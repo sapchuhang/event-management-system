@@ -1,7 +1,7 @@
 <?php
 require_once '../config/db.php';
 require_once '../includes/auth.php';
-requireLogin();
+requireStaffOrAdmin();
 
 // ── Summary KPIs ──────────────────────────────────────────────────────────
 $restrictedTables = getRestrictedTables();
@@ -111,7 +111,7 @@ require_once '../includes/header.php';
             <button id="viewCard"  class="btn btn-primary-custom active" title="Card view">
                 <i class="fas fa-th-large"></i>
             </button>
-            <button id="viewTable" class="btn btn-outline-secondary" title="Table view">
+            <button id="viewTable" class="btn btn-view-inactive" title="Table view">
                 <i class="fas fa-table"></i>
             </button>
         </div>
@@ -379,14 +379,19 @@ document.addEventListener('DOMContentLoaded', function () {
     btnCard.addEventListener('click', () => {
         cardView.classList.remove('d-none');
         tableView.classList.add('d-none');
-        btnCard.classList.replace('btn-outline-secondary', 'btn-primary-custom');
-        btnTable.classList.replace('btn-primary-custom',   'btn-outline-secondary');
+        btnCard.classList.add('active');
+        btnCard.classList.remove('btn-view-inactive');
+        btnCard.classList.add('btn-primary-custom');
+        btnTable.classList.remove('active', 'btn-primary-custom');
+        btnTable.classList.add('btn-view-inactive');
     });
     btnTable.addEventListener('click', () => {
         tableView.classList.remove('d-none');
         cardView.classList.add('d-none');
-        btnTable.classList.replace('btn-outline-secondary', 'btn-primary-custom');
-        btnCard.classList.replace('btn-primary-custom',     'btn-outline-secondary');
+        btnTable.classList.add('active', 'btn-primary-custom');
+        btnTable.classList.remove('btn-view-inactive');
+        btnCard.classList.remove('active', 'btn-primary-custom');
+        btnCard.classList.add('btn-view-inactive');
     });
 
     /* ── Sortable table ─────────────────────────────────────────── */

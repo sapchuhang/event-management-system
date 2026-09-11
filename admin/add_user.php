@@ -37,6 +37,7 @@ require_once '../includes/header.php';
                     <label class="form-label fw-medium">System Role <span class="text-danger">*</span></label>
                     <select name="role" class="form-select" required>
                         <option value="staff" selected>Staff (Limited Access)</option>
+                        <option value="viewer">Viewer (Tab Device - Search & View Only)</option>
                         <option value="admin">Administrator (Full Access)</option>
                     </select>
                 </div>

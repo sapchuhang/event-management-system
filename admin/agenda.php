@@ -1,7 +1,7 @@
 <?php
 require_once '../config/db.php';
 require_once '../includes/auth.php';
-requireLogin();
+requireStaffOrAdmin();
 
 $event_id = $_GET['event_id'] ?? null;
 if (!$event_id) {

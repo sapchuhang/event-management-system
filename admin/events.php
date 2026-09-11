@@ -1,7 +1,7 @@
 <?php
 require_once '../config/db.php';
 require_once '../includes/auth.php';
-requireLogin();
+requireStaffOrAdmin();
 
 $stmt = $pdo->query("SELECT * FROM events ORDER BY event_date DESC");
 $events = $stmt->fetchAll();

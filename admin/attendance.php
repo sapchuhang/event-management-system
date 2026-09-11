@@ -1,7 +1,7 @@
 <?php
 require_once '../config/db.php';
 require_once '../includes/auth.php';
-requireLogin();
+requireStaffOrAdmin();
 
 $event_id = $_GET['event_id'] ?? null;
 
@@ -489,8 +489,8 @@ require_once '../includes/header.php';
                             placeholder="Start typing name or member no..." required autofocus autocomplete="off">
                         <datalist id="memberList">
                             <?php foreach ($datalistMembers as $m): ?>
-                                <option value="<?= htmlspecialchars($m['member_no'] . ' - ' . $m['full_name']) ?>">
-                                <?php endforeach; ?>
+                                <option value="<?= htmlspecialchars($m['member_no'] . ' - ' . $m['full_name']) ?>" label="<?= htmlspecialchars($m['full_name'] . ' (No. ' . $m['member_no'] . ')') ?>">
+                            <?php endforeach; ?>
                         </datalist>
                     </div>
                     <button type="submit" class="btn btn-success px-4"><i class="fas fa-check-circle me-2"></i> Mark</button>

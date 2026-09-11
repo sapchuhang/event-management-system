@@ -22,12 +22,13 @@ try {
         return $stmt->fetchColumn() > 0;
     }
 
-    // Add role column to admin_users if it doesn't exist
+    // Add role column to admin_users if it doesn't exist, or modify to include 'viewer'
     if (!columnExists($pdo, 'admin_users', 'role')) {
-        $pdo->exec("ALTER TABLE admin_users ADD COLUMN role ENUM('admin', 'staff') NOT NULL DEFAULT 'admin' AFTER password;");
+        $pdo->exec("ALTER TABLE admin_users ADD COLUMN role ENUM('admin', 'staff', 'viewer') NOT NULL DEFAULT 'staff' AFTER password;");
         echo "Column 'role' added to 'admin_users' table.<br>\n";
     } else {
-        echo "Column 'role' already exists in 'admin_users' table.<br>\n";
+        $pdo->exec("ALTER TABLE admin_users MODIFY COLUMN role ENUM('admin', 'staff', 'viewer') NOT NULL DEFAULT 'staff';");
+        echo "Column 'role' updated to support 'viewer' in 'admin_users' table.<br>\n";
     }
 
     echo "<strong>Schema migration for users completed successfully!</strong>";

@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Password must be at least 6 characters long.';
     }
 
-    if (!in_array($role, ['admin', 'staff'])) {
+    if (!in_array($role, ['admin', 'staff', 'viewer'])) {
         $errors[] = 'Invalid role selected.';
     }
 

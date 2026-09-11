@@ -14,6 +14,12 @@ if (!isLoggedIn()) {
     exit;
 }
 
+if (isViewer()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Access Denied: Viewer accounts are read-only.']);
+    exit;
+}
+
 header('Content-Type: application/json');
 
 $data = json_decode(file_get_contents('php://input'), true) ?? $_POST;

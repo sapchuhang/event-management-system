@@ -2,7 +2,7 @@
 // actions/delete_member_action.php
 require_once '../config/db.php';
 require_once '../includes/auth.php';
-requireLogin();
+requireStaffOrAdmin();
 
 // Must be a POST request
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

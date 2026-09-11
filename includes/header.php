@@ -13,7 +13,8 @@
     <!-- Google Fonts: Plus Jakarta Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -48,8 +49,13 @@
 
         /* ── Smooth subtle page content fade-in ─────────────────── */
         @keyframes pageContentFadeIn {
-            from { opacity: 0; }
-            to   { opacity: 1; }
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
         }
 
         .main-content {
@@ -68,51 +74,62 @@
     <div class="container-fluid p-0" style="height:100vh; overflow:hidden;">
         <div class="row g-0" style="height:100%; flex-wrap:nowrap;">
             <!-- Sidebar -->
-            <div class="col-md-2 sidebar d-none d-md-block" id="mainSidebar" style="height:100vh; overflow-y:auto; flex-shrink:0;">
+            <div class="col-md-2 sidebar d-none d-md-block" id="mainSidebar"
+                style="height:100vh; overflow-y:auto; flex-shrink:0;">
                 <div class="sidebar-brand text-center mb-4">
                     <img src="<?= BASE_URL ?>assets/img/logo.png" alt="Logo" class="mb-2 sidebar-brand-logo"
                         style="height: 42px; filter: brightness(0) invert(1);">
                     <h6 class="text-white fw-bold tracking-wider mb-0">SUYOGYA SACCOS</h6>
                     <span
-                        class="badge bg-white bg-opacity-10 text-white-50 small px-2 py-1 mt-2 d-inline-block border border-white border-opacity-10">Admin
-                        Panel</span>
+                        class="badge bg-white bg-opacity-10 text-white-50 small px-2 py-1 mt-2 d-inline-block border border-white border-opacity-10"><?= isViewer() ? 'Tab Kiosk' : 'Admin Panel' ?></span>
                 </div>
                 <hr class="sidebar-divider my-3 opacity-25">
                 <div class="sidebar-nav">
                     <?php $currentPage = basename($_SERVER['PHP_SELF']); ?>
-                    <a href="<?= BASE_URL ?>admin/dashboard.php"
-                        class="nav-link-custom <?= $currentPage == 'dashboard.php' ? 'active' : '' ?>">
-                        <i class="fas fa-tachometer-alt me-3"></i> <span>Dashboard</span>
-                    </a>
-                    <a href="<?= BASE_URL ?>admin/events.php"
-                        class="nav-link-custom <?= $currentPage == 'events.php' ? 'active' : '' ?>">
-                        <i class="fas fa-calendar-alt me-3"></i> <span>Events</span>
-                    </a>
-                    <a href="<?= BASE_URL ?>admin/members.php"
-                        class="nav-link-custom <?= ($currentPage == 'members.php' || $currentPage == 'add_member.php' || $currentPage == 'edit_member.php') ? 'active' : '' ?>">
-                        <i class="fas fa-users me-3"></i> <span>Members</span>
-                    </a>
-                    <a href="<?= BASE_URL ?>admin/attendance.php"
-                        class="nav-link-custom <?= $currentPage == 'attendance.php' ? 'active' : '' ?>">
-                        <i class="fas fa-clipboard-check me-3"></i> <span>Attendance</span>
-                    </a>
-                    <a href="<?= BASE_URL ?>admin/agenda.php"
-                        class="nav-link-custom <?= $currentPage == 'agenda.php' ? 'active' : '' ?>">
-                        <i class="fas fa-list-ul me-3"></i> <span>Agenda</span>
-                    </a>
-                    <a href="<?= BASE_URL ?>admin/speakers.php"
-                        class="nav-link-custom <?= $currentPage == 'speakers.php' ? 'active' : '' ?>">
-                        <i class="fas fa-user-tie me-3"></i> <span>Speakers</span>
-                    </a>
-                    <a href="<?= BASE_URL ?>admin/reports.php"
-                        class="nav-link-custom <?= $currentPage == 'reports.php' ? 'active' : '' ?>">
-                        <i class="fas fa-chart-bar me-3"></i> <span>Reports</span>
-                    </a>
-                    <?php if (isAdmin()): ?>
-                    <a href="<?= BASE_URL ?>admin/users.php"
-                        class="nav-link-custom <?= ($currentPage == 'users.php' || $currentPage == 'add_user.php' || $currentPage == 'edit_user.php') ? 'active' : '' ?>">
-                        <i class="fas fa-user-shield me-3"></i> <span>Users</span>
-                    </a>
+                    <?php if (isViewer()): ?>
+                        <a href="<?= BASE_URL ?>admin/tab_member_search.php"
+                            class="nav-link-custom <?= $currentPage == 'tab_member_search.php' ? 'active' : '' ?>">
+                            <i class="fas fa-tablet-alt me-3"></i> <span>Member Search</span>
+                        </a>
+                    <?php else: ?>
+                        <a href="<?= BASE_URL ?>admin/dashboard.php"
+                            class="nav-link-custom <?= $currentPage == 'dashboard.php' ? 'active' : '' ?>">
+                            <i class="fas fa-tachometer-alt me-3"></i> <span>Dashboard</span>
+                        </a>
+                        <a href="<?= BASE_URL ?>admin/tab_member_search.php"
+                            class="nav-link-custom <?= $currentPage == 'tab_member_search.php' ? 'active' : '' ?>">
+                            <i class="fas fa-tablet-alt me-3"></i> <span>Tab Search</span>
+                        </a>
+                        <a href="<?= BASE_URL ?>admin/events.php"
+                            class="nav-link-custom <?= $currentPage == 'events.php' ? 'active' : '' ?>">
+                            <i class="fas fa-calendar-alt me-3"></i> <span>Events</span>
+                        </a>
+                        <a href="<?= BASE_URL ?>admin/members.php"
+                            class="nav-link-custom <?= ($currentPage == 'members.php' || $currentPage == 'add_member.php' || $currentPage == 'edit_member.php') ? 'active' : '' ?>">
+                            <i class="fas fa-users me-3"></i> <span>Members</span>
+                        </a>
+                        <a href="<?= BASE_URL ?>admin/attendance.php"
+                            class="nav-link-custom <?= $currentPage == 'attendance.php' ? 'active' : '' ?>">
+                            <i class="fas fa-clipboard-check me-3"></i> <span>Attendance</span>
+                        </a>
+                        <a href="<?= BASE_URL ?>admin/agenda.php"
+                            class="nav-link-custom <?= $currentPage == 'agenda.php' ? 'active' : '' ?>">
+                            <i class="fas fa-list-ul me-3"></i> <span>Agenda</span>
+                        </a>
+                        <a href="<?= BASE_URL ?>admin/speakers.php"
+                            class="nav-link-custom <?= $currentPage == 'speakers.php' ? 'active' : '' ?>">
+                            <i class="fas fa-user-tie me-3"></i> <span>Speakers</span>
+                        </a>
+                        <a href="<?= BASE_URL ?>admin/reports.php"
+                            class="nav-link-custom <?= $currentPage == 'reports.php' ? 'active' : '' ?>">
+                            <i class="fas fa-chart-bar me-3"></i> <span>Reports</span>
+                        </a>
+                        <?php if (isAdmin()): ?>
+                            <a href="<?= BASE_URL ?>admin/users.php"
+                                class="nav-link-custom <?= ($currentPage == 'users.php' || $currentPage == 'add_user.php' || $currentPage == 'edit_user.php') ? 'active' : '' ?>">
+                                <i class="fas fa-user-shield me-3"></i> <span>Users</span>
+                            </a>
+                        <?php endif; ?>
                     <?php endif; ?>
                 </div>
                 <div class="sidebar-footer mt-auto pt-4">
@@ -139,7 +156,8 @@
                         <div class="d-flex align-items-center ms-auto">
                             <span class="me-3 fw-medium d-none d-sm-inline">Welcome,
                                 <?= htmlspecialchars($_SESSION['admin_username'] ?? 'Admin') ?>
-                                <span class="badge ms-1 text-capitalize" style="font-size: 0.7rem; background: var(--primary); color: #fff; border-radius: 5px;">
+                                <span class="badge ms-1 text-capitalize"
+                                    style="font-size: 0.7rem; background: var(--primary); color: #fff; border-radius: 5px;">
                                     <?= htmlspecialchars($_SESSION['admin_role'] ?? 'admin') ?>
                                 </span>
                             </span>

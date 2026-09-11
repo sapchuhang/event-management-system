@@ -16,6 +16,12 @@ if (!isLoggedIn()) {
     exit;
 }
 
+if (isViewer()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Access Denied: Viewer accounts are read-only and cannot mark attendance.']);
+    exit;
+}
+
 header('Content-Type: application/json');
 
 // Get POST data

@@ -6,11 +6,12 @@ if (!defined('BASE_URL')) {
 }
 
 // Secure session settings
-ini_set('session.cookie_httponly', 1);
-ini_set('session.use_only_cookies', 1);
-ini_set('session.cookie_samesite', 'Lax');
-
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.cookie_httponly', 1);
+    ini_set('session.use_only_cookies', 1);
+    ini_set('session.cookie_samesite', 'Lax');
+    session_start();
+}
 
 function isLoggedIn() {
     return isset($_SESSION['admin_id']);
@@ -35,6 +36,26 @@ function requireLogin() {
 
 function isAdmin() {
     return isLoggedIn() && ($_SESSION['admin_role'] ?? '') === 'admin';
+}
+
+function isStaff() {
+    return isLoggedIn() && ($_SESSION['admin_role'] ?? '') === 'staff';
+}
+
+function isViewer() {
+    return isLoggedIn() && ($_SESSION['admin_role'] ?? '') === 'viewer';
+}
+
+function canManageSystem() {
+    return isAdmin() || isStaff();
+}
+
+function requireStaffOrAdmin() {
+    requireLogin();
+    if (isViewer()) {
+        header('Location: ' . BASE_URL . 'admin/tab_member_search.php');
+        exit;
+    }
 }
 
 function requireAdmin() {

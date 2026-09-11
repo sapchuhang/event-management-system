@@ -1,7 +1,7 @@
 <?php
 require_once '../config/db.php';
 require_once '../includes/auth.php';
-requireLogin();
+requireStaffOrAdmin();
 
 // Whitelist and sanitise sorting parameters
 $allowedSortColumns = ['sn', 'member_no', 'full_name', 'contact', 'page_number', 'table_no', 'file_number', 'status', 'id'];
@@ -181,6 +181,9 @@ require_once '../includes/header.php';
 <div class="page-header mb-4">
     <h4>Members</h4>
     <div class="d-flex gap-2 flex-wrap">
+        <a href="tab_member_search.php" class="btn btn-outline-info">
+            <i class="fas fa-tablet-alt me-1"></i> Tab View
+        </a>
         <a href="../actions/export_members.php" class="btn btn-outline-success">
             <i class="fas fa-download me-1"></i> Export CSV
         </a>

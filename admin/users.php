@@ -52,6 +52,10 @@ require_once '../includes/header.php';
                                 <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
                                     <i class="fas fa-user-shield me-1"></i>Admin
                                 </span>
+                            <?php elseif ($user['role'] === 'viewer'): ?>
+                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1">
+                                    <i class="fas fa-tablet-alt me-1"></i>Viewer (Tab)
+                                </span>
                             <?php else: ?>
                                 <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1">
                                     <i class="fas fa-user me-1"></i>Staff

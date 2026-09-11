@@ -73,6 +73,7 @@ require_once '../includes/header.php';
                     <?php else: ?>
                         <select name="role" class="form-select" required>
                             <option value="staff" <?= $user['role'] === 'staff' ? 'selected' : '' ?>>Staff (Limited Access)</option>
+                            <option value="viewer" <?= $user['role'] === 'viewer' ? 'selected' : '' ?>>Viewer (Tab Device - Search & View Only)</option>
                             <option value="admin" <?= $user['role'] === 'admin' ? 'selected' : '' ?>>Administrator (Full Access)</option>
                         </select>
                     <?php endif; ?>

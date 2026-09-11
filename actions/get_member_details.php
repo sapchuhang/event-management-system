@@ -19,26 +19,80 @@ if (!validateCsrfToken($csrf_token)) {
 }
 
 $member_input = trim($_GET['member_input'] ?? '');
-$event_id = $_GET['event_id'] ?? null;
+$event_id = !empty($_GET['event_id']) ? (int)$_GET['event_id'] : null;
 
-if (!$member_input || !$event_id) {
+if (!$member_input) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Missing parameters']);
+    echo json_encode(['success' => false, 'message' => 'Missing member search input']);
     exit;
 }
 
-// Extract member_no from "M001 - Name" format if it contains " - "
-$parts = explode(' - ', $member_input);
-$member_no = trim($parts[0]);
+// If no event_id provided, default to latest event
+if (!$event_id) {
+    $stmtLatest = $pdo->query("SELECT id FROM events ORDER BY id DESC LIMIT 1");
+    $event_id = $stmtLatest->fetchColumn() ?: 0;
+}
 
-$stmt = $pdo->prepare("
-    SELECT m.id, m.sn, m.member_no, m.full_name, m.contact, m.page_number, m.table_no, m.file_number, m.status, a.attended_at 
+// Flexible extraction of member_no or clean search term
+$member_no_candidate = $member_input;
+if (preg_match('/^([^\-]+)\s*-\s*(.+)$/u', $member_input, $matches)) {
+    // Format: "M001 - Full Name"
+    $member_no_candidate = trim($matches[1]);
+} elseif (preg_match('/\(No\.?\s*([^\)]+)\)/iu', $member_input, $matches)) {
+    // Format: "Full Name (No. M001)"
+    $member_no_candidate = trim($matches[1]);
+} elseif (preg_match('/\(#?([^\)]+)\)/u', $member_input, $matches)) {
+    // Format: "Full Name (#M001)"
+    $member_no_candidate = trim($matches[1]);
+}
+
+$baseSelect = "
+    SELECT m.id, m.sn, m.member_no, m.full_name, m.gender, m.contact, m.page_number, m.table_no, m.file_number, m.status, 
+           a.attended_at, e.title AS event_title, e.id AS event_id
     FROM members m 
     LEFT JOIN attendance a ON m.id = a.member_id AND a.event_id = ?
-    WHERE m.member_no = ?
-");
-$stmt->execute([$event_id, $member_no]);
+    LEFT JOIN events e ON e.id = ?
+";
+
+// 1. Try matching member_no exactly
+$stmt = $pdo->prepare($baseSelect . " WHERE m.member_no = ? LIMIT 1");
+$stmt->execute([$event_id, $event_id, $member_no_candidate]);
 $member = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// 2. If not found, try original input as member_no
+if (!$member && $member_no_candidate !== $member_input) {
+    $stmt = $pdo->prepare($baseSelect . " WHERE m.member_no = ? LIMIT 1");
+    $stmt->execute([$event_id, $event_id, $member_input]);
+    $member = $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+// 3. If not found and input is numeric, try matching S.N.
+if (!$member && is_numeric($member_input)) {
+    $stmt = $pdo->prepare($baseSelect . " WHERE m.sn = ? LIMIT 1");
+    $stmt->execute([$event_id, $event_id, (int)$member_input]);
+    $member = $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+// 4. If not found, try matching exact full_name
+if (!$member) {
+    $stmt = $pdo->prepare($baseSelect . " WHERE m.full_name = ? LIMIT 1");
+    $stmt->execute([$event_id, $event_id, $member_input]);
+    $member = $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+// 5. If not found, try matching phone/contact
+if (!$member) {
+    $stmt = $pdo->prepare($baseSelect . " WHERE m.contact = ? LIMIT 1");
+    $stmt->execute([$event_id, $event_id, $member_input]);
+    $member = $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+// 6. If still not found, try LIKE match on full_name or member_no
+if (!$member) {
+    $stmt = $pdo->prepare($baseSelect . " WHERE m.full_name LIKE ? OR m.member_no LIKE ? ORDER BY CASE WHEN m.full_name LIKE ? THEN 1 ELSE 2 END LIMIT 1");
+    $stmt->execute([$event_id, $event_id, "%$member_input%", "%$member_input%", "$member_input%"]);
+    $member = $stmt->fetch(PDO::FETCH_ASSOC);
+}
 
 if ($member) {
     // Check table restriction

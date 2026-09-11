@@ -2,7 +2,7 @@
 // admin/speakers.php
 require_once '../config/db.php';
 require_once '../includes/auth.php';
-requireLogin();
+requireStaffOrAdmin();
 
 // Fetch speakers
 $stmt = $pdo->query("SELECT * FROM speakers ORDER BY name ASC");
@@ -114,7 +114,7 @@ require_once '../includes/header.php';
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(generateCsrfToken()) ?>">
                 
                 <div class="modal-header bg-primary text-white border-0 py-3">
-                    <h5 class="modal-title fw-bold" id="addSpeakerModalLabel"><i class="fas fa-user-plus me-2"></i>Add Speaker Profile</h5>
+                    <h5 class="modal-title fw-bold text-white" id="addSpeakerModalLabel"><i class="fas fa-user-plus me-2"></i>Add Speaker Profile</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 
@@ -172,7 +172,7 @@ require_once '../includes/header.php';
                 <input type="hidden" name="id" id="edit_speaker_id">
                 
                 <div class="modal-header bg-primary text-white border-0 py-3">
-                    <h5 class="modal-title fw-bold" id="editSpeakerModalLabel"><i class="fas fa-user-edit me-2"></i>Edit Speaker Profile</h5>
+                    <h5 class="modal-title fw-bold text-white" id="editSpeakerModalLabel"><i class="fas fa-user-edit me-2"></i>Edit Speaker Profile</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 
