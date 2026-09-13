@@ -24,17 +24,15 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
     <title><?= htmlspecialchars($pageTitle) ?> – SUYOGYA SACCOS</title>
     <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>assets/img/logo.png">
 
-    <!-- Google Fonts: Plus Jakarta Sans -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Plus Jakarta Sans Font (Local) -->
+    <link rel="stylesheet" href="<?= BASE_URL ?>assets/vendor/fonts/plus-jakarta-sans-local.css">
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Bootstrap CSS (Local) -->
+    <link href="<?= BASE_URL ?>assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome (Local) -->
+    <link rel="stylesheet" href="<?= BASE_URL ?>assets/vendor/fontawesome/css/all.min.css">
+    <!-- SweetAlert2 (Local) -->
+    <script src="<?= BASE_URL ?>assets/vendor/sweetalert2/sweetalert2.all.min.js"></script>
     <!-- QR Code Generator -->
     <script src="<?= BASE_URL ?>assets/js/vendor/qrcode.min.js"></script>
     <!-- HTML5 QR Scanner -->
@@ -775,8 +773,8 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
         </div>
     </div>
 
-    <!-- Bootstrap Bundle JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Bootstrap Bundle JS (Local) -->
+    <script src="<?= BASE_URL ?>assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 
     <script>
     document.addEventListener('DOMContentLoaded', function () {

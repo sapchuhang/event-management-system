@@ -10,22 +10,19 @@
     <title><?= htmlspecialchars($pageTitle ?? 'Event Management System') ?> – SUYOGYA SACCOS</title>
     <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>assets/img/logo.png">
 
-    <!-- Google Fonts: Plus Jakarta Sans -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
-        rel="stylesheet">
+    <!-- Plus Jakarta Sans Font (Local - No Internet Required) -->
+    <link rel="stylesheet" href="<?= BASE_URL ?>assets/vendor/fonts/plus-jakarta-sans-local.css">
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Bootstrap CSS (Local) -->
+    <link href="<?= BASE_URL ?>assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome (Local) -->
+    <link rel="stylesheet" href="<?= BASE_URL ?>assets/vendor/fontawesome/css/all.min.css">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="../assets/css/style.css">
     <!-- Nepali Datepicker CSS (local) -->
     <link href="<?= BASE_URL ?>assets/css/vendor/nepaliDatePicker.min.css" rel="stylesheet" type="text/css">
-    <!-- Chart.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js (Local) -->
+    <script src="<?= BASE_URL ?>assets/vendor/chartjs/chart.min.js"></script>
     <!-- CSRF Token -->
     <meta name="csrf-token" content="<?= htmlspecialchars(generateCsrfToken()) ?>">
 

@@ -69,9 +69,9 @@ function requireAdmin() {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>403 Forbidden – Access Denied</title>
-            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-            <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+            <link href="/event-management/assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+            <link rel="stylesheet" href="/event-management/assets/vendor/fontawesome/css/all.min.css">
+            <link rel="stylesheet" href="/event-management/assets/vendor/fonts/plus-jakarta-sans-local.css">
             <style>
                 body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #eceef2; height: 100vh; display: flex; align-items: center; justify-content: center; }
                 .card { border: none; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); max-width: 450px; text-align: center; padding: 2.5rem; background: #fff; }

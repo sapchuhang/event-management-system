@@ -6,8 +6,8 @@
 </div> <!-- End Row -->
 </div> <!-- End Container -->
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="<?= BASE_URL ?>assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="<?= BASE_URL ?>assets/vendor/sweetalert2/sweetalert2.all.min.js"></script>
 <!-- Nepali Datepicker (local) -->
 <script src="<?= BASE_URL ?>assets/js/vendor/jquery.min.js"></script>
 <script src="<?= BASE_URL ?>assets/js/vendor/nepaliDatePicker.min.js"></script>
