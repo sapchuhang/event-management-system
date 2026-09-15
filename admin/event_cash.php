@@ -68,23 +68,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-// Fetch all users with their cash floats and payouts
+// Fetch all users with their cash floats and payouts (members + guests combined)
 $sql = "
-    SELECT u.id, u.username, u.role, 
+    SELECT u.id, u.username, u.role,
            COALESCE(sec.allocated_amount, 0.00) AS allocated_amount,
-           COALESCE(payouts.total_paid, 0.00) AS paid_amount
+           COALESCE(member_pay.total_paid, 0.00) + COALESCE(guest_pay.total_paid, 0.00) AS paid_amount
     FROM admin_users u
     LEFT JOIN staff_event_cash sec ON u.id = sec.user_id AND sec.event_id = :event_id
     LEFT JOIN (
         SELECT marked_by, SUM(allowance_paid) AS total_paid
-        FROM attendance 
+        FROM attendance
         WHERE event_id = :event_id2
         GROUP BY marked_by
-    ) payouts ON u.id = payouts.marked_by
+    ) member_pay ON u.id = member_pay.marked_by
+    LEFT JOIN (
+        SELECT marked_by, SUM(allowance_paid) AS total_paid
+        FROM guest_allowances
+        WHERE event_id = :event_id3
+        GROUP BY marked_by
+    ) guest_pay ON u.id = guest_pay.marked_by
     ORDER BY u.username ASC
 ";
 $stmt = $pdo->prepare($sql);
-$stmt->execute(['event_id' => $event_id, 'event_id2' => $event_id]);
+$stmt->execute(['event_id' => $event_id, 'event_id2' => $event_id, 'event_id3' => $event_id]);
 $users = $stmt->fetchAll();
 
 $pageTitle = 'Manage Staff Cash – ' . $event['title'];
@@ -123,7 +129,7 @@ require_once '../includes/header.php';
                         <th>Username</th>
                         <th>Role</th>
                         <th>Allocated Cash Float</th>
-                        <th>Amount Paid Out</th>
+                        <th>Amount Paid Out <small class="text-muted fw-normal">(Members + Guests)</small></th>
                         <th>Remaining Float</th>
                         <th style="width: 200px;">New Allocation</th>
                     </tr>

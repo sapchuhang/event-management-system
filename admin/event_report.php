@@ -71,18 +71,41 @@ try {
 
 // Fetch transportation allowance & staff cash float reconciliation data
 $allowanceActive = ((float)$event['allowance_amount'] > 0);
+$totalMemberAllowancePaid = 0.00;
+$totalGuestAllowancePaid = 0.00;
 $totalAllowancePaid = 0.00;
 $staffCashReconciliation = [];
+$guestAllowances = [];
 
-if ($allowanceActive) {
+// Fetch guest & reporter allowances
+try {
+    $stmtGuests = $pdo->prepare("
+        SELECT g.*, u.username AS marked_by_name
+        FROM guest_allowances g
+        LEFT JOIN admin_users u ON g.marked_by = u.id
+        WHERE g.event_id = ?
+        ORDER BY g.id ASC
+    ");
+    $stmtGuests->execute([$event_id]);
+    $guestAllowances = $stmtGuests->fetchAll();
+    $totalGuestAllowancePaid = (float)array_sum(array_column($guestAllowances, 'allowance_paid'));
+} catch (PDOException $e) {
+    $guestAllowances = [];
+}
+
+if ($allowanceActive || !empty($guestAllowances)) {
     $stmtSum = $pdo->prepare("SELECT COALESCE(SUM(allowance_paid), 0.00) FROM attendance WHERE event_id = ?");
     $stmtSum->execute([$event_id]);
-    $totalAllowancePaid = (float)$stmtSum->fetchColumn();
+    $totalMemberAllowancePaid = (float)$stmtSum->fetchColumn();
+
+    $totalAllowancePaid = $totalMemberAllowancePaid + $totalGuestAllowancePaid;
 
     $stmtRecon = $pdo->prepare("
         SELECT u.username, 
                COALESCE(sec.allocated_amount, 0.00) AS allocated,
-               COALESCE(payouts.total_paid, 0.00) AS paid
+               (COALESCE(payouts.total_paid, 0.00) + COALESCE(gpayouts.total_paid, 0.00)) AS paid,
+               COALESCE(payouts.total_paid, 0.00) AS member_paid,
+               COALESCE(gpayouts.total_paid, 0.00) AS guest_paid
         FROM admin_users u
         JOIN staff_event_cash sec ON u.id = sec.user_id AND sec.event_id = :event_id
         LEFT JOIN (
@@ -91,9 +114,15 @@ if ($allowanceActive) {
             WHERE event_id = :event_id2
             GROUP BY marked_by
         ) payouts ON u.id = payouts.marked_by
+        LEFT JOIN (
+            SELECT marked_by, SUM(allowance_paid) AS total_paid
+            FROM guest_allowances 
+            WHERE event_id = :event_id3
+            GROUP BY marked_by
+        ) gpayouts ON u.id = gpayouts.marked_by
         ORDER BY u.username ASC
     ");
-    $stmtRecon->execute(['event_id' => $event_id, 'event_id2' => $event_id]);
+    $stmtRecon->execute(['event_id' => $event_id, 'event_id2' => $event_id, 'event_id3' => $event_id]);
     $staffCashReconciliation = $stmtRecon->fetchAll();
 }
 ?>
@@ -447,32 +476,34 @@ if ($allowanceActive) {
             </div>
 
             <!-- Allowance & Cash Float Reconciliation -->
-            <?php if ($allowanceActive): ?>
-            <div class="section-title">Transportation Allowance & Payout Reconciliation</div>
+            <?php if ($allowanceActive || !empty($guestAllowances)): ?>
+            <div class="section-title">Transportation & Guest Allowance Reconciliation</div>
             <div class="mb-4">
                 <div class="meta-grid mb-3">
                     <div class="meta-card">
-                        <div class="label">Allowance Rate</div>
-                        <div class="value">NPR <?= number_format($event['allowance_amount'], 2) ?></div>
+                        <div class="label">Total Disbursed</div>
+                        <div class="value font-monospace text-primary">NPR <?= number_format($totalAllowancePaid, 2) ?></div>
                     </div>
                     <div class="meta-card">
-                        <div class="label">Total Paid Out</div>
-                        <div class="value">NPR <?= number_format($totalAllowancePaid, 2) ?></div>
+                        <div class="label">Member Allowances</div>
+                        <div class="value font-monospace">NPR <?= number_format($totalMemberAllowancePaid, 2) ?></div>
+                        <small class="text-muted" style="font-size:0.75rem;"><?= $totalPresent ?> Members Paid</small>
                     </div>
                     <div class="meta-card">
-                        <div class="label">Presents Paid</div>
-                        <div class="value"><?= $totalPresent ?> Members</div>
+                        <div class="label">Guests / Reporters</div>
+                        <div class="value font-monospace text-success">NPR <?= number_format($totalGuestAllowancePaid, 2) ?></div>
+                        <small class="text-muted" style="font-size:0.75rem;"><?= count($guestAllowances) ?> Guests / Media Paid</small>
                     </div>
                 </div>
                 
-                <h6 class="fw-bold mb-2 text-secondary small text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">Staff Float Payout Breakdown</h6>
+                <h6 class="fw-bold mb-2 text-secondary small text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">Staff Table Float Reconciliation</h6>
                 <table class="mb-4 text-start" style="width:100%; border: 1px solid #dee2e6;">
                     <thead>
                         <tr style="background:#f8f9fa; color:#212529;">
-                            <th style="background:#f8f9fa; color:#212529; border-bottom: 2px solid #dee2e6; padding: 8px 12px;">Staff Username</th>
-                            <th style="background:#f8f9fa; color:#212529; border-bottom: 2px solid #dee2e6; padding: 8px 12px;">Allocated Cash Float</th>
+                            <th style="background:#f8f9fa; color:#212529; border-bottom: 2px solid #dee2e6; padding: 8px 12px;">Staff Operator</th>
+                            <th style="background:#f8f9fa; color:#212529; border-bottom: 2px solid #dee2e6; padding: 8px 12px;">Allocated Table Float</th>
                             <th style="background:#f8f9fa; color:#212529; border-bottom: 2px solid #dee2e6; padding: 8px 12px;">Amount Paid Out</th>
-                            <th style="background:#f8f9fa; color:#212529; border-bottom: 2px solid #dee2e6; padding: 8px 12px;">Remaining Cash Float</th>
+                            <th style="background:#f8f9fa; color:#212529; border-bottom: 2px solid #dee2e6; padding: 8px 12px;">Remaining Table Float</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -482,7 +513,12 @@ if ($allowanceActive) {
                         <tr>
                             <td class="fw-medium text-dark" style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;"><?= htmlspecialchars($row['username']) ?></td>
                             <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">NPR <?= number_format($row['allocated'], 2) ?></td>
-                            <td class="text-danger" style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">NPR <?= number_format($row['paid'], 2) ?></td>
+                            <td class="text-danger" style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">
+                                <div>NPR <?= number_format($row['paid'], 2) ?></div>
+                                <?php if (($row['guest_paid'] ?? 0) > 0): ?>
+                                    <div class="text-muted" style="font-size: 0.72rem;">(Members: NPR <?= number_format($row['member_paid'], 2) ?> | Guests: NPR <?= number_format($row['guest_paid'], 2) ?>)</div>
+                                <?php endif; ?>
+                            </td>
                             <td class="fw-bold <?= $rem >= $event['allowance_amount'] ? 'text-success' : 'text-danger' ?>" style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">NPR <?= number_format($rem, 2) ?></td>
                         </tr>
                         <?php endforeach; ?>
@@ -494,6 +530,43 @@ if ($allowanceActive) {
                     </tbody>
                 </table>
             </div>
+
+            <!-- Dedicated Guests & Reporters Table -->
+            <?php if (!empty($guestAllowances)): ?>
+            <div class="section-title">Spot Guests, Reporters & Dignitaries Allowance List (<?= count($guestAllowances) ?>)</div>
+            <table class="mb-4 text-start" style="width:100%; border: 1px solid #dee2e6; font-size: 0.82rem;">
+                <thead>
+                    <tr style="background:#083844; color:#ffffff;">
+                        <th style="padding: 8px 10px;">Token #</th>
+                        <th style="padding: 8px 10px;">Full Name</th>
+                        <th style="padding: 8px 10px;">Category</th>
+                        <th style="padding: 8px 10px;">Media / Org</th>
+                        <th style="padding: 8px 10px;">Table</th>
+                        <th style="padding: 8px 10px;">Remarks / Reason</th>
+                        <th style="padding: 8px 10px;">Allowance Paid</th>
+                        <th style="padding: 8px 10px;">Paid By</th>
+                        <th style="padding: 8px 10px;">Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($guestAllowances as $g): ?>
+                    <tr>
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #dee2e6; font-weight:700; color:#083844;"><?= htmlspecialchars($g['token_no'] ?? '—') ?></td>
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #dee2e6; font-weight:600;"><?= htmlspecialchars($g['full_name']) ?></td>
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #dee2e6;">
+                            <span class="badge bg-light text-dark border"><?= htmlspecialchars($g['category']) ?></span>
+                        </td>
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #dee2e6;"><?= htmlspecialchars($g['organization'] ?: '—') ?></td>
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #dee2e6;"><?= htmlspecialchars($g['table_no'] ?: '—') ?></td>
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #dee2e6; color:#6c757d;"><?= htmlspecialchars($g['reason_remarks'] ?: '—') ?></td>
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #dee2e6; font-weight:700; color:#198754;">NPR <?= number_format($g['allowance_paid'], 2) ?></td>
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #dee2e6;"><?= htmlspecialchars($g['marked_by_name'] ?: 'Staff') ?></td>
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #dee2e6; color:#6c757d;"><?= date('h:i A', strtotime($g['created_at'])) ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+            <?php endif; ?>
             <?php endif; ?>
 
             <!-- Agenda -->

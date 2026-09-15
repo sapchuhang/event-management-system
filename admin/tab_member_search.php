@@ -13,6 +13,42 @@ $selectedEventId = !empty($_GET['event_id']) ? (int)$_GET['event_id'] : ($events
 $tablesStmt = $pdo->query("SELECT DISTINCT table_no FROM members WHERE table_no IS NOT NULL AND table_no != '' ORDER BY CAST(table_no AS UNSIGNED) ASC, table_no ASC");
 $tables = $tablesStmt->fetchAll(PDO::FETCH_COLUMN);
 
+// Fetch current user assigned tables
+$myAssignedTables = getAssignedTables($_SESSION['admin_id']);
+$primaryTable = !empty($myAssignedTables) ? $myAssignedTables[0] : '';
+
+// Calculate current user's table cash float for selected event
+$userAllocated = 0.00;
+$userPaid = 0.00;
+$userRemaining = 0.00;
+$currentEventAllowance = 0.00;
+
+if ($selectedEventId > 0) {
+    $stmtEv = $pdo->prepare("SELECT title, allowance_amount FROM events WHERE id = ?");
+    $stmtEv->execute([$selectedEventId]);
+    $evInfo = $stmtEv->fetch();
+    if ($evInfo) {
+        $currentEventAllowance = (float)$evInfo['allowance_amount'];
+        if (isAgmEvent($evInfo['title'])) {
+            $currentEventAllowance = 500.00;
+        }
+    }
+
+    $stmtCash = $pdo->prepare("SELECT COALESCE(allocated_amount, 0.00) FROM staff_event_cash WHERE event_id = ? AND user_id = ?");
+    $stmtCash->execute([$selectedEventId, $_SESSION['admin_id']]);
+    $userAllocated = (float)$stmtCash->fetchColumn();
+
+    $stmtPaid = $pdo->prepare("
+        SELECT (
+            (SELECT COALESCE(SUM(allowance_paid), 0.00) FROM attendance WHERE event_id = ? AND marked_by = ?) +
+            (SELECT COALESCE(SUM(allowance_paid), 0.00) FROM guest_allowances WHERE event_id = ? AND marked_by = ?)
+        )
+    ");
+    $stmtPaid->execute([$selectedEventId, $_SESSION['admin_id'], $selectedEventId, $_SESSION['admin_id']]);
+    $userPaid = (float)$stmtPaid->fetchColumn();
+    $userRemaining = $userAllocated - $userPaid;
+}
+
 $pageTitle = 'Member Search & Detail (Tab Device)';
 ?>
 <!DOCTYPE html>
@@ -483,15 +519,16 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
             body * {
                 visibility: hidden;
             }
-            #printableSlip, #printableSlip * {
+            #printableSlip, #printableSlip *,
+            #printableGuestSlip, #printableGuestSlip * {
                 visibility: visible;
             }
-            #printableSlip {
+            #printableSlip, #printableGuestSlip {
                 position: absolute;
                 left: 0;
                 top: 0;
                 width: 100%;
-                max-width: 320px;
+                max-width: 340px;
                 padding: 1rem;
                 font-family: sans-serif;
             }
@@ -541,20 +578,42 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
 
     <!-- Main Container -->
     <main class="container py-4" style="max-width: 980px;">
-        <!-- Context / Event Bar -->
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 px-2">
-            <div class="d-flex align-items-center gap-2">
-                <span class="text-muted small fw-bold text-uppercase"><i class="fas fa-calendar-check me-1 text-teal"></i> Active Event:</span>
-                <select id="eventSelector" class="form-select form-select-sm fw-semibold shadow-none border-secondary-subtle" style="width: auto; min-width: 200px; border-radius: 8px;">
-                    <?php foreach ($events as $evt): ?>
-                        <option value="<?= $evt['id'] ?>" <?= $evt['id'] == $selectedEventId ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($evt['title']) ?> (<?= date('M d, Y', strtotime($evt['event_date'])) ?>)
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="text-muted small">
-                <i class="fas fa-fingerprint me-1 text-primary"></i> Touch-friendly fast search for Tab operators
+        <!-- Context / Event & Table Float Bar -->
+        <div class="card border-0 shadow-sm rounded-4 p-3 mb-3 bg-white">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="text-muted small fw-bold text-uppercase"><i class="fas fa-calendar-check me-1 text-teal"></i> Event:</span>
+                    <select id="eventSelector" class="form-select form-select-sm fw-semibold shadow-none border-secondary-subtle" style="width: auto; min-width: 200px; border-radius: 8px;">
+                        <?php foreach ($events as $evt): ?>
+                            <option value="<?= $evt['id'] ?>" <?= $evt['id'] == $selectedEventId ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($evt['title']) ?> (<?= date('M d, Y', strtotime($evt['event_date'])) ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <!-- Table Float Balance Pill -->
+                    <div class="badge bg-light text-dark border px-3 py-2 rounded-pill d-flex align-items-center gap-2" id="kioskCashFloatPill" title="Your table's remaining cash float">
+                        <i class="fas fa-wallet text-warning"></i>
+                        <span>
+                            Table <strong><?= htmlspecialchars($primaryTable ?: 'General') ?></strong> Float:
+                            <span class="fw-bold text-success font-monospace" id="kioskRemainingCash">NPR <?= number_format($userRemaining, 2) ?></span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Spot Guest Allowance Action Buttons -->
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <?php if (!isViewer()): ?>
+                        <button type="button" class="btn btn-sm btn-warning text-dark fw-bold px-3 py-2 rounded-3 shadow-sm d-flex align-items-center gap-2" id="btnOpenGuestModal">
+                            <i class="fas fa-user-tag fs-6"></i>
+                            <span>+ Spot Guest / Reporter Allowance</span>
+                        </button>
+                    <?php endif; ?>
+                    <button type="button" class="btn btn-sm btn-outline-secondary px-3 py-2 rounded-3 d-flex align-items-center gap-1" id="btnViewRecentGuests" title="View Recent Spot Payouts">
+                        <i class="fas fa-history"></i>
+                        <span class="d-none d-sm-inline">Recent Spot Payouts</span>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -799,6 +858,212 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
         <div style="text-align: center; margin-top: 10px;">
             <div id="printQrContainer" style="display: inline-block;"></div>
             <div style="font-size: 9px; margin-top: 4px; color: #555;">Please show this slip at your table.</div>
+        </div>
+    </div>
+
+    <!-- Spot Guest & Reporter Allowance Modal -->
+    <div class="modal fade" id="guestAllowanceModal" tabindex="-1" aria-labelledby="guestAllowanceModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+                <div class="modal-header py-3" style="background: linear-gradient(135deg, #083844 0%, #0c4d5d 100%); color: #fff;">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                            <i class="fas fa-user-tag fs-6"></i>
+                        </div>
+                        <div>
+                            <h6 class="modal-title fw-bold mb-0" id="guestAllowanceModalLabel">Spot Guest & Reporter Allowance</h6>
+                            <small class="text-white-50">Disburse transportation allowance to walk-ins, journalists, and guests</small>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <form id="guestAllowanceForm">
+                    <div class="modal-body p-4 bg-light">
+                        <!-- Table Float Info Alert -->
+                        <div class="alert alert-info border-0 rounded-3 d-flex align-items-center gap-3 py-2 px-3 mb-3">
+                            <i class="fas fa-coins text-warning fs-4"></i>
+                            <div class="small">
+                                Allowance disbursed will be <strong>subtracted in real time</strong> from your table's allocated cash float:
+                                <span class="fw-bold text-dark font-monospace ms-1" id="modalRemainingFloatHint">NPR <?= number_format($userRemaining, 2) ?></span> remaining.
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            <!-- Full Name -->
+                            <div class="col-md-7">
+                                <label class="form-label small fw-bold text-uppercase text-secondary">Recipient Full Name <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0"><i class="fas fa-user text-muted"></i></span>
+                                    <input type="text" class="form-control border-start-0 py-2 fw-semibold" id="guestFullName" placeholder="e.g. Shyam Prasad Koirala" required>
+                                </div>
+                            </div>
+
+                            <!-- Mobile / Contact -->
+                            <div class="col-md-5">
+                                <label class="form-label small fw-bold text-uppercase text-secondary">Contact / Mobile No.</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0"><i class="fas fa-phone text-muted"></i></span>
+                                    <input type="tel" class="form-control border-start-0 py-2 font-monospace" id="guestContact" placeholder="98XXXXXXXX">
+                                </div>
+                            </div>
+
+                            <!-- Category / Guest Type -->
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-uppercase text-secondary">Category / Role <span class="text-danger">*</span></label>
+                                <select class="form-select py-2 fw-semibold" id="guestCategory">
+                                    <option value="Media / Reporter" selected>📰 Media / Reporter / Journalist</option>
+                                    <option value="Guest / Dignitary">🎖️ Guest / Dignitary</option>
+                                    <option value="Uninvited / Walk-in">🚶 Uninvited / Walk-in Attendee</option>
+                                    <option value="Member Representative">👥 Member Representative / Proxy</option>
+                                    <option value="Observer / Visitor">👁️ Observer / Visitor</option>
+                                    <option value="Other">📌 Other Special Guest</option>
+                                </select>
+                            </div>
+
+                            <!-- Media / Organization -->
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-uppercase text-secondary">Media House / Organization</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0"><i class="fas fa-building text-muted"></i></span>
+                                    <input type="text" class="form-control border-start-0 py-2" id="guestOrganization" placeholder="e.g. Kantipur TV, Nagarik, Self">
+                                </div>
+                            </div>
+
+                            <!-- Table Number -->
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-uppercase text-secondary">Disbursing Table</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0"><i class="fas fa-chair text-muted"></i></span>
+                                    <input type="text" class="form-control border-start-0 py-2 fw-semibold" id="guestTableNo" value="<?= htmlspecialchars($primaryTable ?: 'Table 1') ?>">
+                                </div>
+                            </div>
+
+                            <!-- Allowance Amount -->
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-uppercase text-secondary">Allowance Amount (NPR)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0 font-monospace">NPR</span>
+                                    <input type="number" step="0.01" min="0" class="form-control border-start-0 py-2 fw-bold font-monospace text-success" id="guestAllowanceAmount" value="<?= number_format($currentEventAllowance, 2, '.', '') ?>" required>
+                                </div>
+                            </div>
+
+                            <!-- Reason / Approval -->
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-uppercase text-secondary">Remarks / Approved By</label>
+                                <input type="text" class="form-control py-2" id="guestRemarks" placeholder="e.g. Approved by Coordinator">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer bg-white border-top py-3 justify-content-between">
+                        <button type="button" class="btn btn-outline-secondary px-3 rounded-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm d-flex align-items-center gap-2" id="btnSubmitGuestAllowance">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Disburse & Record Allowance</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Spot Guests / Reporters Modal -->
+    <div class="modal fade" id="recentGuestsModal" tabindex="-1" aria-labelledby="recentGuestsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+                <div class="modal-header py-3" style="background: #083844; color: #fff;">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-history fs-5 text-warning"></i>
+                        <h6 class="modal-title fw-bold mb-0" id="recentGuestsModalLabel">Recent Spot & Reporter Allowances (Today)</h6>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3 p-md-4 bg-light">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <div class="text-muted small">
+                            Total Disbursed to Guests: <strong class="text-dark font-monospace" id="recentGuestsTotalText">NPR 0.00</strong> (<span id="recentGuestsCountText">0</span> recipients)
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" id="btnRefreshRecentGuests">
+                            <i class="fas fa-sync-alt me-1"></i> Refresh List
+                        </button>
+                    </div>
+
+                    <div class="table-responsive rounded-3 bg-white border shadow-sm">
+                        <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Token</th>
+                                    <th>Recipient Name</th>
+                                    <th>Category</th>
+                                    <th>Media / Org</th>
+                                    <th>Table</th>
+                                    <th>Remarks</th>
+                                    <th>Amount</th>
+                                    <th>Disbursed By</th>
+                                    <th>Time</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentGuestsTableBody">
+                                <tr>
+                                    <td colspan="10" class="text-center py-4 text-muted">
+                                        <div class="spinner-border spinner-border-sm text-secondary me-2"></div>
+                                        Loading recent spot disbursements...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer bg-white border-0 py-2">
+                    <button type="button" class="btn btn-secondary px-4 rounded-3" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Printable Guest / Reporter Allowance Receipt -->
+    <div id="printableGuestSlip" class="d-none">
+        <div style="text-align: center; border-bottom: 2px dashed #000; padding-bottom: 8px; margin-bottom: 12px;">
+            <h4 style="margin: 0; font-weight: bold; font-size: 18px;">SUYOGYA SACCOS</h4>
+            <div style="font-size: 11px; font-weight: bold; letter-spacing: 0.5px; margin-top: 2px;">GUEST / MEDIA ALLOWANCE VOUCHER</div>
+            <div style="font-size: 10px; color: #555; margin-top: 2px;" id="printGuestEventTitle">Event Title</div>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11px;">
+            <div><strong>Token No:</strong> <span id="printGuestToken" style="font-weight: 900; font-size: 13px;">G-001</span></div>
+            <div><strong>Date:</strong> <span id="printGuestDate"></span></div>
+        </div>
+        <div style="margin-bottom: 8px; border-bottom: 1px dotted #ccc; padding-bottom: 6px;">
+            <div style="font-size: 10px; color: #666; text-transform: uppercase;">Recipient Full Name:</div>
+            <div id="printGuestName" style="font-size: 16px; font-weight: bold; color: #000;"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11px;">
+            <div><strong>Category:</strong> <span id="printGuestCategory">Media / Reporter</span></div>
+            <div><strong>Table:</strong> <span id="printGuestTable" style="font-weight: bold;"></span></div>
+        </div>
+        <div style="margin-bottom: 6px; font-size: 11px;">
+            <strong>Media / Organization:</strong> <span id="printGuestOrg">—</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11px;">
+            <div><strong>Contact:</strong> <span id="printGuestContact">—</span></div>
+            <div><strong>Time:</strong> <span id="printGuestTime"></span></div>
+        </div>
+        <div style="margin-bottom: 8px; font-size: 11px; color: #444;">
+            <strong>Reason / Remarks:</strong> <span id="printGuestRemarks">—</span>
+        </div>
+        <div style="border: 2px solid #000; padding: 10px; text-align: center; margin: 12px 0; border-radius: 6px; background: #fafafa;">
+            <div style="font-size: 10px; font-weight: bold; text-transform: uppercase;">Allowance Amount Received:</div>
+            <div id="printGuestAmount" style="font-size: 24px; font-weight: 900; color: #000;">NPR 500.00</div>
+            <div style="font-size: 9px; color: #555; margin-top: 2px;">Disbursed by: <strong id="printGuestDisbursedBy">Staff</strong></div>
+        </div>
+        <div style="margin-top: 36px; display: flex; justify-content: space-between; font-size: 10px; border-top: 1px dashed #444; padding-top: 6px;">
+            <div style="text-align: center; width: 45%;">
+                Recipient Signature
+            </div>
+            <div style="text-align: center; width: 45%;">
+                Cashier / Official Stamp
+            </div>
         </div>
     </div>
 
@@ -1483,6 +1748,340 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
                     html5QrScannerInstance = null;
                 }).catch(err => console.error("Stop error: ", err));
             }
+        }
+
+        // ── 10. Live Cash Float Display Helper ─────────────────────
+        function updateRemainingCashDisplay(amount) {
+            const num = parseFloat(amount);
+            if (isNaN(num)) return;
+            const formatted = 'NPR ' + num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const kioskRemainingEl = document.getElementById('kioskRemainingCash');
+            const modalFloatHintEl = document.getElementById('modalRemainingFloatHint');
+            
+            if (kioskRemainingEl) {
+                kioskRemainingEl.textContent = formatted;
+                if (num < 500) {
+                    kioskRemainingEl.className = 'fw-bold text-danger font-monospace';
+                } else {
+                    kioskRemainingEl.className = 'fw-bold text-success font-monospace';
+                }
+            }
+            if (modalFloatHintEl) {
+                modalFloatHintEl.textContent = formatted;
+            }
+        }
+
+        // ── 11. Spot Guest & Reporter Allowance Management ───────────
+        const guestModalEl = document.getElementById('guestAllowanceModal');
+        const guestModal = guestModalEl ? new bootstrap.Modal(guestModalEl) : null;
+        const btnOpenGuestModal = document.getElementById('btnOpenGuestModal');
+        const guestForm = document.getElementById('guestAllowanceForm');
+        const btnSubmitGuest = document.getElementById('btnSubmitGuestAllowance');
+
+        const recentGuestsModalEl = document.getElementById('recentGuestsModal');
+        const recentGuestsModal = recentGuestsModalEl ? new bootstrap.Modal(recentGuestsModalEl) : null;
+        const btnViewRecentGuests = document.getElementById('btnViewRecentGuests');
+        const btnRefreshRecentGuests = document.getElementById('btnRefreshRecentGuests');
+
+        if (btnOpenGuestModal) {
+            btnOpenGuestModal.addEventListener('click', function () {
+                if (guestModal) guestModal.show();
+            });
+        }
+
+        if (btnViewRecentGuests) {
+            btnViewRecentGuests.addEventListener('click', function () {
+                loadRecentGuests();
+                if (recentGuestsModal) recentGuestsModal.show();
+            });
+        }
+
+        if (btnRefreshRecentGuests) {
+            btnRefreshRecentGuests.addEventListener('click', function () {
+                loadRecentGuests();
+            });
+        }
+
+        // Handle Guest Allowance Submission
+        if (guestForm) {
+            guestForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const eventId = eventSelector.value;
+                const fullName = document.getElementById('guestFullName').value.trim();
+                const contact = document.getElementById('guestContact').value.trim();
+                const category = document.getElementById('guestCategory').value;
+                const organization = document.getElementById('guestOrganization').value.trim();
+                const tableNo = document.getElementById('guestTableNo').value.trim();
+                const allowanceAmount = document.getElementById('guestAllowanceAmount').value;
+                const remarks = document.getElementById('guestRemarks').value.trim();
+
+                if (!fullName) {
+                    Swal.fire({ icon: 'warning', title: 'Name Required', text: 'Please enter the recipient full name.' });
+                    return;
+                }
+
+                btnSubmitGuest.disabled = true;
+                btnSubmitGuest.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Recording...';
+
+                fetch('../actions/add_guest_allowance.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    body: JSON.stringify({
+                        event_id: eventId,
+                        full_name: fullName,
+                        contact: contact,
+                        category: category,
+                        organization: organization,
+                        table_no: tableNo,
+                        allowance_paid: allowanceAmount,
+                        reason_remarks: remarks
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    btnSubmitGuest.disabled = false;
+                    btnSubmitGuest.innerHTML = '<i class="fas fa-check-circle me-2"></i><span>Disburse & Record Allowance</span>';
+
+                    if (data.success) {
+                        playSuccessSound();
+                        if (guestModal) guestModal.hide();
+
+                        // Update table cash float
+                        if (data.remaining_cash !== undefined) {
+                            updateRemainingCashDisplay(data.remaining_cash);
+                        }
+
+                        // Reset form fields
+                        document.getElementById('guestFullName').value = '';
+                        document.getElementById('guestContact').value = '';
+                        document.getElementById('guestOrganization').value = '';
+                        document.getElementById('guestRemarks').value = '';
+
+                        // Prompt to print slip
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Allowance Disbursed!',
+                            html: `
+                                <div class="text-start p-2 bg-light rounded-3">
+                                    <div><strong>Token:</strong> ${escapeHtml(data.guest.token_no)}</div>
+                                    <div><strong>Recipient:</strong> ${escapeHtml(data.guest.full_name)}</div>
+                                    <div><strong>Category:</strong> ${escapeHtml(data.guest.category)}</div>
+                                    <div><strong>Amount Paid:</strong> <span class="text-success fw-bold">NPR ${parseFloat(data.guest.allowance_paid).toFixed(2)}</span></div>
+                                    <div class="small text-muted mt-1">Deducted from Table ${escapeHtml(data.guest.table_no)} float.</div>
+                                </div>
+                            `,
+                            showCancelButton: true,
+                            confirmButtonColor: '#083844',
+                            cancelButtonColor: '#6c757d',
+                            confirmButtonText: '<i class="fas fa-print me-1"></i> Print Voucher Slip',
+                            cancelButtonText: 'Done'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                printGuestAllowanceSlip(data.guest);
+                            }
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Disbursement Failed',
+                            text: data.message || 'Could not record allowance.',
+                            confirmButtonColor: '#083844'
+                        });
+                    }
+                })
+                .catch(err => {
+                    btnSubmitGuest.disabled = false;
+                    btnSubmitGuest.innerHTML = '<i class="fas fa-check-circle me-2"></i><span>Disburse & Record Allowance</span>';
+                    console.error("Guest allowance error: ", err);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Network Error',
+                        text: 'Unable to reach the server to record guest allowance.',
+                        confirmButtonColor: '#083844'
+                    });
+                });
+            });
+        }
+
+        // Print Voucher Slip for Guest / Reporter
+        function printGuestAllowanceSlip(g) {
+            const pSlip = document.getElementById('printableSlip');
+            const pGuestSlip = document.getElementById('printableGuestSlip');
+
+            if (!pGuestSlip) return;
+
+            document.getElementById('printGuestEventTitle').textContent = g.event_title || (eventSelector.options[eventSelector.selectedIndex]?.text || '');
+            document.getElementById('printGuestToken').textContent = g.token_no || 'G-001';
+            document.getElementById('printGuestDate').textContent = g.dispensed_date || new Date().toLocaleDateString();
+            document.getElementById('printGuestName').textContent = g.full_name;
+            document.getElementById('printGuestCategory').textContent = g.category || 'Media / Reporter';
+            document.getElementById('printGuestTable').textContent = g.table_no || 'Table 1';
+            document.getElementById('printGuestOrg').textContent = g.organization && g.organization !== '—' ? g.organization : 'Individual';
+            document.getElementById('printGuestContact').textContent = g.contact || '—';
+            document.getElementById('printGuestTime').textContent = g.dispensed_time || new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            document.getElementById('printGuestRemarks').textContent = g.reason_remarks && g.reason_remarks !== '—' ? g.reason_remarks : 'None';
+            document.getElementById('printGuestAmount').textContent = 'NPR ' + parseFloat(g.allowance_paid || 0).toFixed(2);
+            document.getElementById('printGuestDisbursedBy').textContent = g.dispensed_by || 'Staff';
+
+            if (pSlip) pSlip.classList.add('d-none');
+            pGuestSlip.classList.remove('d-none');
+
+            window.print();
+
+            setTimeout(() => {
+                pGuestSlip.classList.add('d-none');
+            }, 1000);
+        }
+
+        // Load recent spot guests list
+        function loadRecentGuests() {
+            const tableBody = document.getElementById('recentGuestsTableBody');
+            const totalText = document.getElementById('recentGuestsTotalText');
+            const countText = document.getElementById('recentGuestsCountText');
+            const eventId = eventSelector.value;
+
+            if (!tableBody) return;
+
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="10" class="text-center py-4 text-muted">
+                        <div class="spinner-border spinner-border-sm text-secondary me-2"></div>
+                        Loading recent disbursements...
+                    </td>
+                </tr>
+            `;
+
+            fetch(`../actions/get_guest_allowances.php?event_id=${eventId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.guests) {
+                        totalText.textContent = 'NPR ' + parseFloat(data.total_paid || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        countText.textContent = data.total_count || 0;
+
+                        if (data.guests.length === 0) {
+                            tableBody.innerHTML = `
+                                <tr>
+                                    <td colspan="10" class="text-center py-4 text-muted">
+                                        No spot or reporter allowances recorded for this event yet.
+                                    </td>
+                                </tr>
+                            `;
+                            return;
+                        }
+
+                        tableBody.innerHTML = '';
+                        data.guests.forEach(g => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td class="fw-bold text-dark font-monospace">${escapeHtml(g.token_no)}</td>
+                                <td class="fw-semibold">${escapeHtml(g.full_name)}</td>
+                                <td><span class="badge bg-light text-dark border">${escapeHtml(g.category)}</span></td>
+                                <td>${escapeHtml(g.organization)}</td>
+                                <td><span class="badge bg-secondary-subtle text-secondary">${escapeHtml(g.table_no)}</span></td>
+                                <td class="text-muted small">${escapeHtml(g.reason_remarks)}</td>
+                                <td class="fw-bold text-success font-monospace">NPR ${parseFloat(g.allowance_paid).toFixed(2)}</td>
+                                <td>${escapeHtml(g.marked_by_name)}</td>
+                                <td class="text-muted small">${escapeHtml(g.created_time)}</td>
+                                <td class="text-end">
+                                    <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 me-1 btn-reprint-guest" title="Re-print Slip">
+                                        <i class="fas fa-print"></i>
+                                    </button>
+                                    ${!isViewerUser ? `
+                                    <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2 btn-void-guest" title="Revert / Void Allowance">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>` : ''}
+                                </td>
+                            `;
+
+                            // Re-print button
+                            const btnReprint = tr.querySelector('.btn-reprint-guest');
+                            if (btnReprint) {
+                                btnReprint.addEventListener('click', function () {
+                                    printGuestAllowanceSlip({
+                                        event_title: eventSelector.options[eventSelector.selectedIndex]?.text || '',
+                                        token_no: g.token_no,
+                                        dispensed_date: g.created_date,
+                                        full_name: g.full_name,
+                                        category: g.category,
+                                        organization: g.organization,
+                                        table_no: g.table_no,
+                                        contact: g.contact,
+                                        dispensed_time: g.created_time,
+                                        reason_remarks: g.reason_remarks,
+                                        allowance_paid: g.allowance_paid,
+                                        dispensed_by: g.marked_by_name
+                                    });
+                                });
+                            }
+
+                            // Void / Delete button
+                            const btnVoid = tr.querySelector('.btn-void-guest');
+                            if (btnVoid) {
+                                btnVoid.addEventListener('click', function () {
+                                    Swal.fire({
+                                        title: 'Revert Allowance?',
+                                        text: `Revert allowance of NPR ${parseFloat(g.allowance_paid).toFixed(2)} for ${g.full_name} (${g.token_no})? The cash will be refunded to the table float.`,
+                                        icon: 'warning',
+                                        showCancelButton: true,
+                                        confirmButtonColor: '#d33',
+                                        cancelButtonColor: '#6c757d',
+                                        confirmButtonText: 'Yes, Revert'
+                                    }).then((result) => {
+                                        if (result.isConfirmed) {
+                                            fetch('../actions/delete_guest_allowance.php', {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'X-CSRF-TOKEN': csrfToken
+                                                },
+                                                body: JSON.stringify({ id: g.id })
+                                            })
+                                            .then(res => res.json())
+                                            .then(delData => {
+                                                if (delData.success) {
+                                                    Swal.fire({
+                                                        icon: 'success',
+                                                        title: 'Reverted',
+                                                        text: delData.message,
+                                                        timer: 2000,
+                                                        showConfirmButton: false
+                                                    });
+                                                    // Refresh list and reload balance
+                                                    loadRecentGuests();
+                                                    // Add back to cash float display
+                                                    const kioskRem = document.getElementById('kioskRemainingCash');
+                                                    if (kioskRem) {
+                                                        const current = parseFloat(kioskRem.textContent.replace(/[^0-9.-]+/g,"")) || 0;
+                                                        updateRemainingCashDisplay(current + parseFloat(g.allowance_paid));
+                                                    }
+                                                } else {
+                                                    Swal.fire({ icon: 'error', title: 'Error', text: delData.message });
+                                                }
+                                            })
+                                            .catch(err => {
+                                                Swal.fire({ icon: 'error', title: 'Error', text: 'Network connection failed.' });
+                                            });
+                                        }
+                                    });
+                                });
+                            }
+
+                            tableBody.appendChild(tr);
+                        });
+                    }
+                })
+                .catch(err => {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="10" class="text-center py-4 text-danger">
+                                <i class="fas fa-exclamation-triangle me-1"></i> Failed to load recent spot disbursements.
+                            </td>
+                        </tr>
+                    `;
+                });
         }
     });
     </script>

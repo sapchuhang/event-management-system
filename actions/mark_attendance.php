@@ -169,9 +169,14 @@ if ($member) {
         $stmtCash->execute([$event_id, $marked_by]);
         $allocated = (float)$stmtCash->fetchColumn();
 
-        // Calculate paid out amount by this user
-        $stmtPaid = $pdo->prepare("SELECT COALESCE(SUM(allowance_paid), 0.00) FROM attendance WHERE event_id = ? AND marked_by = ?");
-        $stmtPaid->execute([$event_id, $marked_by]);
+        // Calculate paid out amount by this user (members + guests/reporters)
+        $stmtPaid = $pdo->prepare("
+            SELECT (
+                (SELECT COALESCE(SUM(allowance_paid), 0.00) FROM attendance WHERE event_id = ? AND marked_by = ?) +
+                (SELECT COALESCE(SUM(allowance_paid), 0.00) FROM guest_allowances WHERE event_id = ? AND marked_by = ?)
+            )
+        ");
+        $stmtPaid->execute([$event_id, $marked_by, $event_id, $marked_by]);
         $paid = (float)$stmtPaid->fetchColumn();
 
         $remaining = $allocated - $paid;

@@ -122,6 +122,25 @@ try {
             FOREIGN KEY (user_id) REFERENCES admin_users(id) ON DELETE CASCADE,
             UNIQUE KEY unique_user_table (user_id, table_no)
         );
+        CREATE TABLE IF NOT EXISTS guest_allowances (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            event_id INT NOT NULL,
+            token_no VARCHAR(50) NULL,
+            full_name VARCHAR(150) NOT NULL,
+            contact VARCHAR(50) NULL,
+            organization VARCHAR(150) NULL,
+            category VARCHAR(80) NOT NULL DEFAULT 'Media / Reporter',
+            table_no VARCHAR(50) NULL,
+            reason_remarks TEXT NULL,
+            allowance_paid DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+            marked_by INT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+            FOREIGN KEY (marked_by) REFERENCES admin_users(id) ON DELETE SET NULL,
+            INDEX idx_guest_event (event_id),
+            INDEX idx_guest_marked_by (marked_by),
+            INDEX idx_guest_table (table_no)
+        );
     ");
 
     // Default admin: admin / password123
