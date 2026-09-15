@@ -402,7 +402,7 @@ if ($allowanceActive || !empty($guestAllowances)) {
                     <h2><?= htmlspecialchars($event['title']) ?></h2>
                 </div>
                 <div class="text-end subtitle">
-                    <div>Generated: <?= date('d M Y, h:i A') ?></div>
+                    <div>Generated: <?= bsToday('%M %d, %y') ?>, <?= date('h:i A') ?></div>
                 </div>
             </div>
         </div>
@@ -413,7 +413,7 @@ if ($allowanceActive || !empty($guestAllowances)) {
             <div class="meta-grid">
                 <div class="meta-card">
                     <div class="label">Date</div>
-                    <div class="value"><i class="fas fa-calendar me-1"></i><?= htmlspecialchars($event['event_date']) ?>
+                    <div class="value"><i class="fas fa-calendar me-1"></i><?= bsFormat($event['event_date']) ?>
                     </div>
                 </div>
                 <div class="meta-card">
@@ -561,7 +561,7 @@ if ($allowanceActive || !empty($guestAllowances)) {
                         <td style="padding: 6px 10px; border-bottom: 1px solid #dee2e6; color:#6c757d;"><?= htmlspecialchars($g['reason_remarks'] ?: '—') ?></td>
                         <td style="padding: 6px 10px; border-bottom: 1px solid #dee2e6; font-weight:700; color:#198754;">NPR <?= number_format($g['allowance_paid'], 2) ?></td>
                         <td style="padding: 6px 10px; border-bottom: 1px solid #dee2e6;"><?= htmlspecialchars($g['marked_by_name'] ?: 'Staff') ?></td>
-                        <td style="padding: 6px 10px; border-bottom: 1px solid #dee2e6; color:#6c757d;"><?= date('h:i A', strtotime($g['created_at'])) ?></td>
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #dee2e6; color:#6c757d;"><?= bsTimeFromTimestamp($g['created_at']) ?></td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -619,7 +619,7 @@ if ($allowanceActive || !empty($guestAllowances)) {
                                     <span class="badge-absent">&#10007; Absent</span>
                                         <?php endif; ?>
                             </td>
-                            <td><?= $member['attended_at'] ? date('h:i A', strtotime($member['attended_at'])) : '—' ?></td>
+                            <td><?= $member['attended_at'] ? bsTimeFromTimestamp($member['attended_at']) : '—' ?></td>
                         </tr>
                         <?php endforeach; ?>
                 </tbody>
@@ -629,9 +629,9 @@ if ($allowanceActive || !empty($guestAllowances)) {
 
         <!-- Footer -->
         <div class="report-footer">
-            <span>SUYOGYA SACCOS &copy; <?= date('Y') ?></span>
+            <span>SUYOGYA SACCOS &copy; <?= bsYear() ?></span>
             <span>Event Management System</span>
-            <span>Printed: <?= date('d M Y') ?></span>
+            <span>Printed: <?= bsToday('%M %d, %y') ?></span>
         </div>
 
     </div>

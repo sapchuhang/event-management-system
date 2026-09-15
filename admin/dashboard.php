@@ -126,7 +126,7 @@ require_once '../includes/header.php';
     <div>
         <h3 class="fw-bold mb-0" style="color: var(--primary);">Welcome Back,
             <?= htmlspecialchars($_SESSION['admin_username'] ?? 'Admin') ?></h3>
-        <p class="text-muted mb-0 mt-1" style="font-size:0.875rem;">Real-time analytics overview — <?= date('l, d F Y') ?></p>
+        <p class="text-muted mb-0 mt-1" style="font-size:0.875rem;">Real-time analytics overview — <?= bsToday('%D, %M %d, %y') ?></p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
         <a href="reports.php" class="btn btn-outline-secondary btn-sm"><i class="fas fa-chart-bar"></i> Reports</a>
@@ -314,7 +314,7 @@ require_once '../includes/header.php';
                     </div>
                 </div>
                 <div class="text-end text-muted small">
-                    <i class="far fa-clock me-1"></i> <?= date('M d, h:i A', strtotime($act['attended_at'])) ?>
+                    <i class="far fa-clock me-1"></i> <?= bsTimeFromTimestamp($act['attended_at']) ?>
                 </div>
             </div>
             <?php endforeach; ?>

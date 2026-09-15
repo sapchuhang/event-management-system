@@ -391,7 +391,7 @@ require_once '../includes/header.php';
                     onchange="location = '?event_id=' + this.value;">
                     <?php foreach ($all_events as $a): ?>
                         <option value="<?= htmlspecialchars($a['id']) ?>" <?= $a['id'] == $event_id ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($a['title']) ?> (<?= date('Y-m-d', strtotime($a['event_date'])) ?>)
+                            <?= htmlspecialchars($a['title']) ?> (<?= bsFormat($a['event_date'], '%y-%m-%d') ?>)
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -456,7 +456,7 @@ require_once '../includes/header.php';
                                     <i class="fas <?= $style[1] ?> me-2"></i> <?= $style[2] ?>
                                 </span>
                                 <span class="text-muted small fw-medium">
-                                    <i class="far fa-calendar-alt me-1"></i> <?= date('M d, Y', strtotime($a['event_date'])) ?>
+                                    <i class="far fa-calendar-alt me-1"></i> <?= bsFormat($a['event_date']) ?>
                                 </span>
                             </div>
 
@@ -687,7 +687,7 @@ require_once '../includes/header.php';
                                 <?php endif; ?>
                             </td>
                             <td class="text-muted small time-cell">
-                                <?= $member['attended_at'] ? date('h:i A', strtotime($member['attended_at'])) : '—' ?>
+                                <?= $member['attended_at'] ? bsTimeFromTimestamp($member['attended_at']) : '—' ?>
                             </td>
                             <?php if ($allowanceAmount > 0): ?>
                             <td class="allowance-cell font-monospace fw-medium text-success">

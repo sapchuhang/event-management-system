@@ -1,5 +1,6 @@
 <?php
 // includes/auth.php
+require_once __DIR__ . '/nepali_date.php';
 
 if (!defined('BASE_URL')) {
     define('BASE_URL', '/event-management/');

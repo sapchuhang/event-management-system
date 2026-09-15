@@ -153,7 +153,7 @@ try {
             'event_title' => $eventObj['title'],
             'dispensed_by' => $_SESSION['admin_username'] ?? 'Staff',
             'dispensed_time' => date('h:i A'),
-            'dispensed_date' => date('M d, Y')
+            'dispensed_date' => bsToday()
         ]
     ]);
 } catch (PDOException $e) {

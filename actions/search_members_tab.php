@@ -138,8 +138,8 @@ try {
             'file_number'  => $item['file_number'] ?: '—',
             'status'       => $item['status'],
             'is_attended'  => !empty($item['attended_at']),
-            'attended_at'  => $item['attended_at'] ? date('h:i A', strtotime($item['attended_at'])) : null,
-            'attended_date'=> $item['attended_at'] ? date('M d, Y', strtotime($item['attended_at'])) : null,
+            'attended_at'  => $item['attended_at'] ? bsTimeFromTimestamp($item['attended_at']) : null,
+            'attended_date'=> $item['attended_at'] ? bsToday() : null,
             'event_title'  => $item['event_title'] ?? 'Current Event'
         ];
     }, $results);

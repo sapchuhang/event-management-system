@@ -44,8 +44,8 @@ try {
             'allowance_paid' => (float)$g['allowance_paid'],
             'marked_by' => (int)$g['marked_by'],
             'marked_by_name' => $g['marked_by_name'] ?: 'Staff',
-            'created_time' => date('h:i A', strtotime($g['created_at'])),
-            'created_date' => date('M d, Y', strtotime($g['created_at']))
+            'created_time' => bsTimeFromTimestamp($g['created_at']),
+            'created_date' => bsToday()
         ];
     }, $guests);
 

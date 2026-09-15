@@ -586,7 +586,7 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
                     <select id="eventSelector" class="form-select form-select-sm fw-semibold shadow-none border-secondary-subtle" style="width: auto; min-width: 200px; border-radius: 8px;">
                         <?php foreach ($events as $evt): ?>
                             <option value="<?= $evt['id'] ?>" <?= $evt['id'] == $selectedEventId ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($evt['title']) ?> (<?= date('M d, Y', strtotime($evt['event_date'])) ?>)
+                                <?= htmlspecialchars($evt['title']) ?> (<?= bsFormat($evt['event_date']) ?>)
                             </option>
                         <?php endforeach; ?>
                     </select>

@@ -77,7 +77,7 @@ require_once '../includes/header.php';
                                 </div>
                             <?php endif; ?>
                         </td>
-                        <td class="text-muted"><?= date('M d, Y h:i A', strtotime($user['created_at'])) ?></td>
+                        <td class="text-muted"><?= bsTimeFromTimestamp($user['created_at']) ?></td>
                         <td>
                             <div class="d-flex gap-2">
                                 <a href="edit_user.php?id=<?= $user['id'] ?>" class="btn btn-sm btn-outline-primary" title="Edit User">

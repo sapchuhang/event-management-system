@@ -99,7 +99,7 @@ require_once '../includes/header.php';
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="fw-bold mb-1">Staff Cash Floats</h4>
-        <p class="text-muted mb-0"><?= htmlspecialchars($event['title']) ?> — <?= htmlspecialchars($event['event_date']) ?></p>
+        <p class="text-muted mb-0"><?= htmlspecialchars($event['title']) ?> — <?= bsFormat($event['event_date']) ?></p>
     </div>
     <a href="events.php" class="btn btn-outline-secondary"><i class="fas fa-arrow-left me-2"></i> Back to Events</a>
 </div>
