@@ -18,10 +18,11 @@ if (!validateCsrfToken($csrf_token)) {
     exit;
 }
 
+$member_id = !empty($_GET['member_id']) ? (int)$_GET['member_id'] : null;
 $member_input = trim($_GET['member_input'] ?? '');
 $event_id = !empty($_GET['event_id']) ? (int)$_GET['event_id'] : null;
 
-if (!$member_input) {
+if (!$member_id && $member_input === '') {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Missing member search input']);
     exit;
@@ -33,19 +34,6 @@ if (!$event_id) {
     $event_id = $stmtLatest->fetchColumn() ?: 0;
 }
 
-// Flexible extraction of member_no or clean search term
-$member_no_candidate = $member_input;
-if (preg_match('/^([^\-]+)\s*-\s*(.+)$/u', $member_input, $matches)) {
-    // Format: "M001 - Full Name"
-    $member_no_candidate = trim($matches[1]);
-} elseif (preg_match('/\(No\.?\s*([^\)]+)\)/iu', $member_input, $matches)) {
-    // Format: "Full Name (No. M001)"
-    $member_no_candidate = trim($matches[1]);
-} elseif (preg_match('/\(#?([^\)]+)\)/u', $member_input, $matches)) {
-    // Format: "Full Name (#M001)"
-    $member_no_candidate = trim($matches[1]);
-}
-
 $baseSelect = "
     SELECT m.id, m.sn, m.member_no, m.full_name, m.gender, m.contact, m.page_number, m.table_no, m.file_number, m.status, 
            a.attended_at, e.title AS event_title, e.id AS event_id
@@ -54,44 +42,97 @@ $baseSelect = "
     LEFT JOIN events e ON e.id = ?
 ";
 
-// 1. Try matching member_no exactly
-$stmt = $pdo->prepare($baseSelect . " WHERE m.member_no = ? LIMIT 1");
-$stmt->execute([$event_id, $event_id, $member_no_candidate]);
-$member = $stmt->fetch(PDO::FETCH_ASSOC);
+$member = null;
 
-// 2. If not found, try original input as member_no
-if (!$member && $member_no_candidate !== $member_input) {
-    $stmt = $pdo->prepare($baseSelect . " WHERE m.member_no = ? LIMIT 1");
-    $stmt->execute([$event_id, $event_id, $member_input]);
+// 1. If member_id is provided directly
+if ($member_id) {
+    $stmt = $pdo->prepare($baseSelect . " WHERE m.id = ? LIMIT 1");
+    $stmt->execute([$event_id, $event_id, $member_id]);
     $member = $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
-// 3. If not found and input is numeric, try matching S.N.
-if (!$member && is_numeric($member_input)) {
-    $stmt = $pdo->prepare($baseSelect . " WHERE m.sn = ? LIMIT 1");
-    $stmt->execute([$event_id, $event_id, (int)$member_input]);
-    $member = $stmt->fetch(PDO::FETCH_ASSOC);
-}
+// 2. Flexible extraction of member_no or clean search term
+if (!$member && $member_input !== '') {
+    $rawInput = $member_input;
+    $candidate = $rawInput;
 
-// 4. If not found, try matching exact full_name
-if (!$member) {
-    $stmt = $pdo->prepare($baseSelect . " WHERE m.full_name = ? LIMIT 1");
-    $stmt->execute([$event_id, $event_id, $member_input]);
-    $member = $stmt->fetch(PDO::FETCH_ASSOC);
-}
+    if (preg_match('/^([^\-]+)\s*-\s*(.+)$/u', $rawInput, $matches)) {
+        // Format: "M001 - Full Name" or "SN 12 | M001 - Full Name"
+        $candidate = trim($matches[1]);
+        if (strpos($candidate, '|') !== false) {
+            $pipeParts = explode('|', $candidate);
+            $candidate = trim(end($pipeParts));
+        }
+    } elseif (preg_match('/\(No\.?\s*([^\)]+)\)/iu', $rawInput, $matches)) {
+        $candidate = trim($matches[1]);
+    } elseif (preg_match('/\(#?([^\)]+)\)/u', $rawInput, $matches)) {
+        $candidate = trim($matches[1]);
+    }
 
-// 5. If not found, try matching phone/contact
-if (!$member) {
-    $stmt = $pdo->prepare($baseSelect . " WHERE m.contact = ? LIMIT 1");
-    $stmt->execute([$event_id, $event_id, $member_input]);
-    $member = $stmt->fetch(PDO::FETCH_ASSOC);
-}
+    $cleanSn = preg_replace('/^(sn|s\.n\.|#|no\.?)\s*[-:]?\s*/iu', '', $rawInput);
+    $cleanCandidateSn = preg_replace('/^(sn|s\.n\.|#|no\.?)\s*[-:]?\s*/iu', '', $candidate);
+    $numSn = is_numeric($cleanSn) ? (int)$cleanSn : (is_numeric($rawInput) ? (int)$rawInput : -999999);
 
-// 6. If still not found, try LIKE match on full_name or member_no
-if (!$member) {
-    $stmt = $pdo->prepare($baseSelect . " WHERE m.full_name LIKE ? OR m.member_no LIKE ? ORDER BY CASE WHEN m.full_name LIKE ? THEN 1 ELSE 2 END LIMIT 1");
-    $stmt->execute([$event_id, $event_id, "%$member_input%", "%$member_input%", "$member_input%"]);
+    // A. Match member_no case-insensitively
+    $stmt = $pdo->prepare($baseSelect . " WHERE LOWER(m.member_no) = LOWER(?) LIMIT 1");
+    $stmt->execute([$event_id, $event_id, $candidate]);
     $member = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // B. Try raw input as member_no case-insensitively
+    if (!$member && $candidate !== $rawInput) {
+        $stmt = $pdo->prepare($baseSelect . " WHERE LOWER(m.member_no) = LOWER(?) LIMIT 1");
+        $stmt->execute([$event_id, $event_id, $rawInput]);
+        $member = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    // C. Try matching Serial No (sn) case-insensitively or numerically
+    if (!$member) {
+        $snAttempts = array_unique(array_filter([$cleanCandidateSn, $cleanSn, $candidate, $rawInput]));
+        foreach ($snAttempts as $snVal) {
+            if ($snVal !== '') {
+                $stmt = $pdo->prepare($baseSelect . " WHERE LOWER(m.sn) = LOWER(?) OR (m.sn REGEXP '^[0-9]+$' AND CAST(m.sn AS UNSIGNED) = ?) LIMIT 1");
+                $nVal = is_numeric($snVal) ? (int)$snVal : -999999;
+                $stmt->execute([$event_id, $event_id, $snVal, $nVal]);
+                $member = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($member) break;
+            }
+        }
+    }
+
+    // D. Try matching exact full_name case-insensitively
+    if (!$member) {
+        $stmt = $pdo->prepare($baseSelect . " WHERE LOWER(m.full_name) = LOWER(?) LIMIT 1");
+        $stmt->execute([$event_id, $event_id, $rawInput]);
+        $member = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    // E. Try matching phone/contact
+    if (!$member) {
+        $stmt = $pdo->prepare($baseSelect . " WHERE m.contact = ? LIMIT 1");
+        $stmt->execute([$event_id, $event_id, $rawInput]);
+        $member = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    // F. Fallback LIKE match on full_name, member_no, or sn (case-insensitive)
+    if (!$member) {
+        $stmt = $pdo->prepare("
+            $baseSelect 
+            WHERE LOWER(m.full_name) LIKE LOWER(?) 
+               OR LOWER(m.member_no) LIKE LOWER(?) 
+               OR LOWER(m.sn) LIKE LOWER(?) 
+            ORDER BY 
+               CASE 
+                   WHEN LOWER(m.sn) = LOWER(?) OR (m.sn REGEXP '^[0-9]+$' AND CAST(m.sn AS UNSIGNED) = ?) THEN 1
+                   WHEN LOWER(m.member_no) = LOWER(?) THEN 2 
+                   WHEN LOWER(m.full_name) LIKE LOWER(?) THEN 3 
+                   ELSE 4 
+               END 
+            LIMIT 1
+        ");
+        $like = "%" . $rawInput . "%";
+        $stmt->execute([$event_id, $event_id, $like, $like, $like, $cleanSn, $numSn, $candidate, $rawInput . '%']);
+        $member = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
 }
 
 if ($member) {

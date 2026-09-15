@@ -12,6 +12,8 @@ if (!isLoggedIn()) {
 }
 
 $query = trim($_GET['q'] ?? '');
+$cleanSn = preg_replace('/^(sn|s\.n\.|#|no\.?)\s*[-:]?\s*/iu', '', $query);
+$numSn = is_numeric($cleanSn) ? (int)$cleanSn : (is_numeric($query) ? (int)$query : -999999);
 $event_id = !empty($_GET['event_id']) ? (int)$_GET['event_id'] : null;
 
 if (!$event_id) {
@@ -25,13 +27,29 @@ $params = [$event_id];
 
 if ($query !== '') {
     $searchTerm = "%" . $query . "%";
-    $whereClauses[] = "(m.full_name LIKE ? OR m.member_no LIKE ? OR m.contact LIKE ? OR m.sn LIKE ?)";
+    $cleanTerm = "%" . $cleanSn . "%";
+    
+    // Case-insensitive search matching full_name, member_no, contact, and sn (both string and numeric)
+    $whereClauses[] = "(
+        LOWER(m.full_name) LIKE LOWER(?) OR 
+        LOWER(m.member_no) LIKE LOWER(?) OR 
+        m.contact LIKE ? OR 
+        LOWER(m.sn) LIKE LOWER(?) OR 
+        LOWER(m.sn) LIKE LOWER(?) OR 
+        LOWER(m.sn) = LOWER(?) OR 
+        LOWER(m.sn) = LOWER(?) OR 
+        (m.sn REGEXP '^[0-9]+$' AND CAST(m.sn AS UNSIGNED) = ?)
+    )";
     $params[] = $searchTerm;
     $params[] = $searchTerm;
     $params[] = $searchTerm;
     $params[] = $searchTerm;
+    $params[] = $cleanTerm;
+    $params[] = $query;
+    $params[] = $cleanSn;
+    $params[] = $numSn;
 } else {
-    // If empty query, return recent active members (first 20)
+    // If empty query, return recent active members (first 25)
     $whereClauses[] = "1=1";
 }
 
@@ -49,22 +67,31 @@ if ($restrictedTables !== null) {
 
 $whereSql = implode(' AND ', $whereClauses);
 
-// Prioritize results that start with the query or match member_no/name closely
+// Prioritize exact S.N. matches, exact member_no matches, exact name, then prefix matches
+// All comparisons are case-insensitive
 $orderBy = "
     CASE 
-        WHEN m.member_no = ? THEN 1
-        WHEN m.full_name = ? THEN 2
-        WHEN m.full_name LIKE ? THEN 3
-        WHEN m.member_no LIKE ? THEN 4
-        ELSE 5 
+        WHEN (m.sn REGEXP '^[0-9]+$' AND CAST(m.sn AS UNSIGNED) = ?) OR LOWER(m.sn) = LOWER(?) OR LOWER(m.sn) = LOWER(?) THEN 1
+        WHEN LOWER(m.member_no) = LOWER(?) OR LOWER(m.member_no) = LOWER(?) THEN 2
+        WHEN LOWER(m.full_name) = LOWER(?) THEN 3
+        WHEN LOWER(m.member_no) LIKE LOWER(?) THEN 4
+        WHEN LOWER(m.full_name) LIKE LOWER(?) THEN 5
+        WHEN LOWER(m.sn) LIKE LOWER(?) THEN 6
+        ELSE 7 
     END, 
+    CAST(m.sn AS UNSIGNED) ASC,
     m.full_name ASC
 ";
 $orderParams = [
+    $numSn,
     $query,
+    $cleanSn,
+    $query,
+    $cleanSn,
     $query,
     $query . '%',
-    $query . '%'
+    $query . '%',
+    $cleanSn . '%'
 ];
 
 $sql = "

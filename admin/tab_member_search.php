@@ -301,6 +301,26 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
             border: 1px solid #bbf7d0;
         }
 
+        .pill-sn {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+            font-weight: 700;
+        }
+
+        .btn-quick-attend {
+            font-size: 0.78rem;
+            font-weight: 700;
+            padding: 0.2rem 0.65rem;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .btn-quick-attend:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+        }
+
         /* ── Detail Card Presentation ────────────────── */
         .member-kiosk-card {
             background: var(--surface);
@@ -618,6 +638,12 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
 
                         <!-- Top Action Buttons -->
                         <div class="d-flex align-items-center gap-2">
+                            <?php if (!isViewer()): ?>
+                                <button type="button" id="btnMarkAttendance" class="btn btn-success fw-bold px-3 py-2 rounded-3 d-flex align-items-center gap-2 shadow-sm">
+                                    <i class="fas fa-check-circle fs-5" id="markAttendanceIcon"></i>
+                                    <span id="markAttendanceText">Mark Present</span>
+                                </button>
+                            <?php endif; ?>
                             <button type="button" id="btnNextSearch" class="btn btn-light text-dark fw-bold px-3 py-2 rounded-3 d-flex align-items-center gap-2 shadow-sm">
                                 <i class="fas fa-plus"></i>
                                 <span>Next Member</span>
@@ -630,9 +656,12 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
                     </div>
 
                     <!-- Attendance Status Banner -->
-                    <div class="mt-3 p-2 px-3 rounded-3 d-flex align-items-center gap-2 small" id="detailAttendanceBanner" style="background: rgba(255, 255, 255, 0.15);">
-                        <i class="fas fa-info-circle"></i>
-                        <span id="detailAttendanceText">Attendance status</span>
+                    <div class="mt-3 p-2 px-3 rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-2 small" id="detailAttendanceBanner" style="background: rgba(255, 255, 255, 0.15);">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fas fa-info-circle fs-5" id="attendanceBannerIcon"></i>
+                            <span id="detailAttendanceText">Attendance status</span>
+                        </div>
+                        <div id="bannerActionArea"></div>
                     </div>
                 </div>
 
@@ -788,6 +817,9 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
         const btnPrintSlip      = document.getElementById('btnPrintSlip');
         const btnToggleFs       = document.getElementById('btnToggleFullscreen');
         const btnOpenScanner    = document.getElementById('btnOpenScanner');
+        const btnMarkAttendance = document.getElementById('btnMarkAttendance');
+        const csrfToken         = '<?= generateCsrfToken() ?>';
+        const isViewerUser      = <?= isViewer() ? 'true' : 'false' ?>;
 
         let debounceTimer = null;
         let activeIndex = -1;
@@ -796,7 +828,7 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
         let qrCodeObj = null;
         let activeMemberData = null;
 
-        // Sound effect on scan / successful selection
+        // Sound effect on scan / successful selection / check-in
         function playSuccessSound() {
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -843,7 +875,7 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
         });
 
         // Fetch suggestions from backend
-        function fetchSuggestions(query) {
+        function fetchSuggestions(query, callback) {
             const eventId = eventSelector.value;
             fetch(`../actions/search_members_tab.php?q=${encodeURIComponent(query)}&event_id=${eventId}`)
                 .then(res => res.json())
@@ -851,22 +883,45 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
                     if (data.success && data.members && data.members.length > 0) {
                         currentSuggestions = data.members;
                         renderSuggestions(data.members, query);
+                        if (callback) callback(data.members);
                     } else {
                         currentSuggestions = [];
                         renderNoResults(query);
+                        if (callback) callback([]);
                     }
                 })
                 .catch(err => {
                     console.error("Search error: ", err);
+                    if (callback) callback([]);
                 });
         }
 
-        // Highlight matching substring
+        // Highlight matching substrings case-insensitively
         function highlightMatch(text, query) {
-            if (!query || !text) return text || '';
-            const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            if (!query || !text) return escapeHtml(text || '');
+            const cleanQuery = query.trim().replace(/^(sn|s\.n\.|#|no\.?)\s*[-:]?\s*/iu, '');
+            const tokens = [query.trim()];
+            if (cleanQuery && cleanQuery !== query.trim()) {
+                tokens.push(cleanQuery);
+            }
+            const escaped = tokens
+                .filter(t => t.length > 0)
+                .map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+                .join('|');
+            if (!escaped) return escapeHtml(text);
+            const safeText = escapeHtml(text);
             const regex = new RegExp(`(${escaped})`, 'gi');
-            return text.replace(regex, '<span class="tab-suggestion-highlight">$1</span>');
+            return safeText.replace(regex, '<span class="tab-suggestion-highlight">$1</span>');
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.toString()
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
 
         // Render the rich, easy-to-read suggestions
@@ -880,27 +935,63 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
                 item.dataset.index = idx;
 
                 const nameHighlighted = highlightMatch(m.full_name, query);
-                const noHighlighted = highlightMatch(m.member_no, query);
+                const noHighlighted   = highlightMatch(m.member_no, query);
+                const snHighlighted   = highlightMatch(m.sn, query);
 
                 item.innerHTML = `
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <div class="tab-suggestion-name">
                             <i class="fas fa-user-circle text-teal opacity-75"></i>
                             <span>${nameHighlighted}</span>
                             <span class="badge ${m.status === 'active' ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'} border px-2 py-0 small" style="font-size: 0.65rem;">
-                                ${m.status}
+                                ${escapeHtml(m.status)}
                             </span>
                         </div>
-                        ${m.is_attended ? '<span class="pill-badge pill-attended"><i class="fas fa-check-circle"></i> Attended (' + m.attended_at + ')</span>' : ''}
+                        <div class="d-flex align-items-center gap-2 suggestion-status-area" id="sug-status-${idx}">
+                            ${m.is_attended 
+                                ? '<span class="pill-badge pill-attended"><i class="fas fa-check-circle"></i> Attended (' + escapeHtml(m.attended_at) + ')</span>' 
+                                : (!isViewerUser 
+                                    ? `<button type="button" class="btn btn-sm btn-success rounded-pill btn-quick-attend" data-index="${idx}" title="Quick Mark Present">
+                                         <i class="fas fa-check me-1"></i> Attend
+                                       </button>` 
+                                    : '<span class="badge bg-secondary-subtle text-muted">Not Present</span>')}
+                        </div>
                     </div>
                     <div class="tab-suggestion-badges">
+                        ${m.sn && m.sn !== '—' ? '<span class="pill-badge pill-sn"><i class="fas fa-hashtag"></i> S.N. ' + snHighlighted + '</span>' : ''}
                         <span class="pill-badge pill-member-no"><i class="fas fa-id-badge"></i> No. ${noHighlighted}</span>
-                        <span class="pill-badge pill-table"><i class="fas fa-chair"></i> Table ${m.table_no || '—'}</span>
-                        <span class="pill-badge pill-page"><i class="fas fa-book"></i> Page ${m.page_number || '—'}</span>
-                        ${m.sn && m.sn !== '—' ? '<span class="pill-badge pill-page"><i class="fas fa-hashtag"></i> S.N. ' + m.sn + '</span>' : ''}
+                        <span class="pill-badge pill-table"><i class="fas fa-chair"></i> Table ${escapeHtml(m.table_no || '—')}</span>
+                        <span class="pill-badge pill-page"><i class="fas fa-book"></i> Page ${escapeHtml(m.page_number || '—')}</span>
                         ${m.contact && m.contact !== '—' ? '<span class="pill-badge pill-phone"><i class="fas fa-phone"></i> ' + highlightMatch(m.contact, query) + '</span>' : ''}
                     </div>
                 `;
+
+                // Quick Attend button handler directly in dropdown
+                const btnQuickAttend = item.querySelector('.btn-quick-attend');
+                if (btnQuickAttend) {
+                    btnQuickAttend.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        btnQuickAttend.disabled = true;
+                        btnQuickAttend.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>...';
+                        markMemberAttendance(m, function (data) {
+                            m.is_attended = true;
+                            m.attended_at = data.member ? data.member.attended_at : 'Just now';
+                            m.attended_date = 'Today';
+                            const statusArea = document.getElementById('sug-status-' + idx);
+                            if (statusArea) {
+                                statusArea.innerHTML = '<span class="pill-badge pill-attended"><i class="fas fa-check-circle"></i> Attended (' + escapeHtml(m.attended_at) + ')</span>';
+                            }
+                            if (activeMemberData && activeMemberData.id === m.id) {
+                                activeMemberData.is_attended = true;
+                                activeMemberData.attended_at = m.attended_at;
+                                updateAttendanceUI();
+                            }
+                        }, function () {
+                            btnQuickAttend.disabled = false;
+                            btnQuickAttend.innerHTML = '<i class="fas fa-check me-1"></i> Attend';
+                        });
+                    });
+                }
 
                 item.addEventListener('click', function () {
                     selectMember(m);
@@ -915,7 +1006,7 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
         function renderNoResults(query) {
             suggestionsBox.innerHTML = `
                 <div class="p-3 text-center text-muted small">
-                    <i class="fas fa-search me-1 opacity-50"></i> No members found matching "<strong>${highlightMatch(query, '')}</strong>".
+                    <i class="fas fa-search me-1 opacity-50"></i> No members found matching "<strong>${escapeHtml(query)}</strong>".
                 </div>
             `;
             suggestionsBox.style.display = 'block';
@@ -936,13 +1027,14 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
         // ── 2. Keyboard Navigation in Suggestions ──────────────────
         searchInput.addEventListener('keydown', function (e) {
             const items = suggestionsBox.querySelectorAll('.tab-suggestion-item');
-            if (!items.length) return;
 
             if (e.key === 'ArrowDown') {
+                if (!items.length) return;
                 e.preventDefault();
                 activeIndex = (activeIndex + 1) % items.length;
                 updateActiveSuggestion(items);
             } else if (e.key === 'ArrowUp') {
+                if (!items.length) return;
                 e.preventDefault();
                 activeIndex = (activeIndex - 1 + items.length) % items.length;
                 updateActiveSuggestion(items);
@@ -952,6 +1044,15 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
                     selectMember(currentSuggestions[activeIndex]);
                 } else if (currentSuggestions.length > 0) {
                     selectMember(currentSuggestions[0]);
+                } else {
+                    const query = searchInput.value.trim();
+                    if (query) {
+                        fetchSuggestions(query, function (members) {
+                            if (members && members.length > 0) {
+                                selectMember(members[0]);
+                            }
+                        });
+                    }
                 }
             } else if (e.key === 'Escape') {
                 hideSuggestions();
@@ -986,16 +1087,8 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
             document.getElementById('detailGender').textContent = member.gender || '—';
             document.getElementById('detailContact').textContent = member.contact || '—';
 
-            // Populate Attendance Banner
-            const attBanner = document.getElementById('detailAttendanceBanner');
-            const attText = document.getElementById('detailAttendanceText');
-            if (member.is_attended) {
-                attBanner.className = 'mt-3 p-2 px-3 rounded-3 d-flex align-items-center gap-2 small bg-success bg-opacity-75 text-white';
-                attText.innerHTML = `<strong>✓ Present:</strong> Checked in at <strong>${member.attended_at}</strong> (${member.attended_date || ''}) for <em>${member.event_title}</em>`;
-            } else {
-                attBanner.className = 'mt-3 p-2 px-3 rounded-3 d-flex align-items-center gap-2 small bg-white bg-opacity-15 text-white';
-                attText.innerHTML = `<i class="fas fa-clock opacity-75"></i> Not marked present yet for <em>${member.event_title}</em>`;
-            }
+            // Populate Attendance Banner & Action Button
+            updateAttendanceUI();
 
             // Populate Giant Tiles
             document.getElementById('tileTableNo').textContent = member.table_no || '—';
@@ -1006,7 +1099,7 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
             // Populate Info Cells
             document.getElementById('cellMemberNo').textContent = member.member_no;
             document.getElementById('cellContact').innerHTML = member.contact && member.contact !== '—' 
-                ? `<a href="tel:${member.contact}" class="text-decoration-none text-dark">${member.contact}</a> <button class="btn btn-sm btn-link p-0 ms-1 text-muted" onclick="navigator.clipboard.writeText('${member.contact}')" title="Copy"><i class="far fa-copy"></i></button>`
+                ? `<a href="tel:${member.contact}" class="text-decoration-none text-dark">${escapeHtml(member.contact)}</a> <button class="btn btn-sm btn-link p-0 ms-1 text-muted" onclick="navigator.clipboard.writeText('${escapeHtml(member.contact)}')" title="Copy"><i class="far fa-copy"></i></button>`
                 : '—';
             document.getElementById('cellStatus').textContent = member.status || 'Active';
             document.getElementById('cellGender').textContent = member.gender || '—';
@@ -1030,6 +1123,187 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
 
             // Smoothly scroll into view if needed
             activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Update attendance banner and top button presentation
+        function updateAttendanceUI() {
+            if (!activeMemberData) return;
+            const attBanner = document.getElementById('detailAttendanceBanner');
+            const attText = document.getElementById('detailAttendanceText');
+            const bannerActionArea = document.getElementById('bannerActionArea');
+            const btnMark = document.getElementById('btnMarkAttendance');
+
+            if (activeMemberData.is_attended) {
+                attBanner.className = 'mt-3 p-2 px-3 rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-2 small bg-success bg-opacity-75 text-white';
+                attText.innerHTML = `<strong><i class="fas fa-check-circle me-1"></i> Present:</strong> Checked in at <strong>${activeMemberData.attended_at || 'Just now'}</strong> (${activeMemberData.attended_date || 'Today'}) for <em>${escapeHtml(activeMemberData.event_title || '')}</em>`;
+                
+                if (bannerActionArea) {
+                    bannerActionArea.innerHTML = !isViewerUser 
+                        ? `<button type="button" class="btn btn-sm btn-outline-light py-0 px-2 rounded-2 fw-semibold" id="btnBannerUndo"><i class="fas fa-undo me-1"></i>Undo</button>`
+                        : '';
+                    const btnUndo = document.getElementById('btnBannerUndo');
+                    if (btnUndo) {
+                        btnUndo.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            undoMemberAttendance(activeMemberData);
+                        });
+                    }
+                }
+                
+                if (btnMark) {
+                    btnMark.className = 'btn btn-outline-light fw-bold px-3 py-2 rounded-3 d-flex align-items-center gap-2 shadow-sm';
+                    btnMark.innerHTML = '<i class="fas fa-check-double text-success"></i> <span>Attended ✓</span>';
+                }
+            } else {
+                attBanner.className = 'mt-3 p-2 px-3 rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-2 small bg-white bg-opacity-15 text-white';
+                attText.innerHTML = `<i class="fas fa-clock opacity-75"></i> Not marked present yet for <em>${escapeHtml(activeMemberData.event_title || '')}</em>`;
+                
+                if (bannerActionArea) {
+                    bannerActionArea.innerHTML = '';
+                }
+                
+                if (btnMark) {
+                    btnMark.className = 'btn btn-success fw-bold px-3 py-2 rounded-3 d-flex align-items-center gap-2 shadow-sm';
+                    btnMark.innerHTML = '<i class="fas fa-check-circle fs-5"></i> <span>Mark Present</span>';
+                }
+            }
+        }
+
+        // Attendance marking logic via AJAX
+        function markMemberAttendance(member, onSuccess, onFail) {
+            const eventId = eventSelector.value;
+            fetch('../actions/mark_attendance.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: JSON.stringify({
+                    event_id: eventId,
+                    member_id: member.id,
+                    member_input: member.member_no
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    playSuccessSound();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Attendance Marked!',
+                        text: `Marked present for ${member.full_name} (S.N. ${member.sn || member.member_no})`,
+                        timer: 2200,
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false
+                    });
+                    if (onSuccess) onSuccess(data);
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Attendance Failed',
+                        text: data.message || 'Could not mark attendance.',
+                        confirmButtonColor: '#083844'
+                    });
+                    if (onFail) onFail(data);
+                }
+            })
+            .catch(err => {
+                console.error("Attendance error: ", err);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Network Error',
+                    text: 'Unable to reach the server to record attendance.',
+                    confirmButtonColor: '#083844'
+                });
+                if (onFail) onFail(err);
+            });
+        }
+
+        // Undo attendance logic via AJAX
+        function undoMemberAttendance(member, onSuccess) {
+            Swal.fire({
+                title: 'Undo Attendance?',
+                text: `Are you sure you want to unmark attendance for ${member.full_name}?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="fas fa-undo me-1"></i> Yes, Undo Check-in',
+                cancelButtonText: 'Cancel'
+            }).then((res) => {
+                if (res.isConfirmed) {
+                    const eventId = eventSelector.value;
+                    fetch('../actions/unmark_attendance.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken
+                        },
+                        body: JSON.stringify({
+                            event_id: eventId,
+                            member_id: member.id
+                        })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            member.is_attended = false;
+                            member.attended_at = null;
+                            member.attended_date = null;
+                            Swal.fire({
+                                icon: 'info',
+                                title: 'Attendance Reverted',
+                                text: `Check-in reverted for ${member.full_name}`,
+                                timer: 2000,
+                                toast: true,
+                                position: 'top-end',
+                                showConfirmButton: false
+                            });
+                            updateAttendanceUI();
+                            if (onSuccess) onSuccess(data);
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: data.message || 'Unable to undo attendance.',
+                                confirmButtonColor: '#083844'
+                            });
+                        }
+                    })
+                    .catch(err => {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Unable to connect to server.',
+                            confirmButtonColor: '#083844'
+                        });
+                    });
+                }
+            });
+        }
+
+        // Main card "Mark Present" button click listener
+        if (btnMarkAttendance) {
+            btnMarkAttendance.addEventListener('click', function () {
+                if (!activeMemberData) return;
+                if (activeMemberData.is_attended) {
+                    undoMemberAttendance(activeMemberData);
+                } else {
+                    btnMarkAttendance.disabled = true;
+                    btnMarkAttendance.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Marking...';
+                    markMemberAttendance(activeMemberData, function (data) {
+                        btnMarkAttendance.disabled = false;
+                        activeMemberData.is_attended = true;
+                        activeMemberData.attended_at = data.member ? data.member.attended_at : 'Just now';
+                        activeMemberData.attended_date = 'Today';
+                        updateAttendanceUI();
+                    }, function () {
+                        btnMarkAttendance.disabled = false;
+                        updateAttendanceUI();
+                    });
+                }
+            });
         }
 
         // ── 4. "Next Member" Reset Button ─────────────────────────
@@ -1110,7 +1384,7 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
                     if (data.success && data.member) {
                         selectMember({
                             ...activeMemberData,
-                            is_attended: !empty(data.member.attended_at),
+                            is_attended: Boolean(data.member.attended_at),
                             attended_at: data.member.attended_at ? new Date(data.member.attended_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : null,
                             attended_date: data.member.attended_at ? new Date(data.member.attended_at).toLocaleDateString() : null,
                             event_title: data.member.event_title || 'Selected Event'

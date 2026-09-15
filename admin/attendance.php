@@ -48,15 +48,15 @@ if ($event) {
     // 1. Fetch active members for the autocomplete datalist (lightweight query)
     if ($restrictedTables !== null) {
         if (empty($restrictedTables)) {
-            $stmtDatalist = $pdo->prepare("SELECT member_no, full_name FROM members WHERE 1=0");
+            $stmtDatalist = $pdo->prepare("SELECT member_no, full_name, sn FROM members WHERE 1=0");
             $stmtDatalist->execute();
         } else {
             $inClause = implode(',', array_fill(0, count($restrictedTables), '?'));
-            $stmtDatalist = $pdo->prepare("SELECT member_no, full_name FROM members WHERE status = 'active' AND table_no IN ($inClause) ORDER BY full_name ASC");
+            $stmtDatalist = $pdo->prepare("SELECT member_no, full_name, sn FROM members WHERE status = 'active' AND table_no IN ($inClause) ORDER BY full_name ASC");
             $stmtDatalist->execute($restrictedTables);
         }
     } else {
-        $stmtDatalist = $pdo->prepare("SELECT member_no, full_name FROM members WHERE status = 'active' ORDER BY full_name ASC");
+        $stmtDatalist = $pdo->prepare("SELECT member_no, full_name, sn FROM members WHERE status = 'active' ORDER BY full_name ASC");
         $stmtDatalist->execute();
     }
     $datalistMembers = $stmtDatalist->fetchAll();
@@ -93,11 +93,27 @@ if ($event) {
     }
 
     if ($search !== '') {
-        $queryParts[] = "(m.full_name LIKE ? OR m.member_no LIKE ? OR m.contact LIKE ? OR m.page_number LIKE ?)";
-        $params[] = "%$search%";
-        $params[] = "%$search%";
-        $params[] = "%$search%";
-        $params[] = "%$search%";
+        $cleanSn = preg_replace('/^(sn|s\.n\.|#|no\.?)\s*[-:]?\s*/iu', '', $search);
+        $numSn = is_numeric($cleanSn) ? (int)$cleanSn : (is_numeric($search) ? (int)$search : -999999);
+        $queryParts[] = "(
+            LOWER(m.full_name) LIKE LOWER(?) OR 
+            LOWER(m.member_no) LIKE LOWER(?) OR 
+            m.contact LIKE ? OR 
+            m.page_number LIKE ? OR 
+            LOWER(m.sn) LIKE LOWER(?) OR 
+            LOWER(m.sn) = LOWER(?) OR 
+            LOWER(m.sn) = LOWER(?) OR 
+            (m.sn REGEXP '^[0-9]+$' AND CAST(m.sn AS UNSIGNED) = ?)
+        )";
+        $searchTerm = "%" . $search . "%";
+        $params[] = $searchTerm;
+        $params[] = $searchTerm;
+        $params[] = $searchTerm;
+        $params[] = $searchTerm;
+        $params[] = "%" . $cleanSn . "%";
+        $params[] = $search;
+        $params[] = $cleanSn;
+        $params[] = $numSn;
     }
 
     if ($statusFilter !== '') {
@@ -484,12 +500,12 @@ require_once '../includes/header.php';
                     class="d-flex align-items-end gap-3 flex-wrap">
                     <input type="hidden" name="event_id" value="<?= $event_id ?>">
                     <div class="flex-grow-1" style="min-width: 250px;">
-                        <label class="form-label fw-medium">Search Member by Name or No.</label>
+                        <label class="form-label fw-medium">Search Member by Name, No. or S.N.</label>
                         <input list="memberList" id="memberSearch" name="member_input" class="form-control"
-                            placeholder="Start typing name or member no..." required autofocus autocomplete="off">
+                            placeholder="Start typing name, member no, or S.N..." required autofocus autocomplete="off">
                         <datalist id="memberList">
                             <?php foreach ($datalistMembers as $m): ?>
-                                <option value="<?= htmlspecialchars($m['member_no'] . ' - ' . $m['full_name']) ?>" label="<?= htmlspecialchars($m['full_name'] . ' (No. ' . $m['member_no'] . ')') ?>">
+                                <option value="<?= htmlspecialchars(($m['sn'] ? 'SN ' . $m['sn'] . ' | ' : '') . $m['member_no'] . ' - ' . $m['full_name']) ?>" label="<?= htmlspecialchars(($m['sn'] ? 'SN: ' . $m['sn'] . ' | ' : '') . $m['full_name'] . ' (No. ' . $m['member_no'] . ')') ?>">
                             <?php endforeach; ?>
                         </datalist>
                     </div>
