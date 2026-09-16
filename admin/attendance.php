@@ -379,6 +379,29 @@ require_once '../includes/header.php';
     .attendance-table tbody tr.present-row td {
         background-color: rgba(20, 184, 166, 0.02);
     }
+
+    .attendance-table {
+        min-width: 960px;
+    }
+
+    @media (max-width: 768px) {
+        .attendance-toolbar {
+            padding: 0.75rem 1rem;
+        }
+        .attendance-table thead th,
+        .attendance-table tbody td {
+            padding: 0.5rem 0.5rem;
+            font-size: 0.82rem;
+        }
+        .attendance-table th:first-child,
+        .attendance-table td:first-child {
+            padding-left: 0.85rem !important;
+        }
+        .attendance-table th:last-child,
+        .attendance-table td:last-child {
+            padding-right: 0.85rem !important;
+        }
+    }
 </style>
 
 <?php if ($event): ?>
@@ -397,7 +420,7 @@ require_once '../includes/header.php';
                 </select>
             <?php endif; ?>
         </div>
-        <div class="d-print-none d-flex align-items-center gap-2 flex-nowrap">
+        <div class="d-print-none d-flex align-items-center gap-2 flex-wrap">
             <?php if (isAdmin() && $allowanceAmount > 0): ?>
                 <a href="event_cash.php?event_id=<?= $event_id ?>" class="btn btn-sm btn-outline-primary"><i class="fas fa-coins me-1"></i> Manage Cash</a>
             <?php endif; ?>
@@ -491,7 +514,7 @@ require_once '../includes/header.php';
                 <?php if ($allowanceAmount > 0): 
                     $floatClass = ($userRemaining >= $allowanceAmount) ? 'bg-success-subtle text-success border-success-subtle' : 'bg-danger-subtle text-danger border-danger-subtle';
                 ?>
-                    <div class="alert <?= $floatClass ?> border d-flex justify-content-between align-items-center mb-3 py-2 px-3 small" id="cashFloatAlert">
+                    <div class="alert <?= $floatClass ?> border d-flex justify-content-between align-items-center mb-3 py-2 px-3 small flex-wrap gap-2" id="cashFloatAlert">
                         <div>
                             <i class="fas fa-wallet me-2"></i>
                             Transportation Allowance: <strong>NPR <?= number_format($allowanceAmount, 2) ?> per member</strong>
@@ -597,7 +620,7 @@ require_once '../includes/header.php';
         </div>
 
         <!-- Table -->
-        <div class="mb-0">
+        <div class="table-responsive mb-0">
             <table class="table table-hover align-middle mb-0 attendance-table">
                 <thead>
                     <tr>

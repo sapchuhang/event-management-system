@@ -1,0 +1,23 @@
+# Disable directory browsing
+Options -Indexes
+
+# Leverage browser caching for local network speed
+<IfModule mod_headers.c>
+    <FilesMatch "\.(css|js|woff2|woff|ttf|eot|png|jpg|jpeg|gif|svg|ico)$">
+        Header set Cache-Control "max-age=2592000, public"
+    </FilesMatch>
+</IfModule>
+
+# Protect sensitive files from browser access
+<FilesMatch "\.(sql|log|md|git.*)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Set UTF-8 default charset
+AddDefaultCharset UTF-8

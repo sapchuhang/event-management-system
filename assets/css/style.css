@@ -1,5 +1,5 @@
 /* assets/css/style.css */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+/* Fonts are bundled locally in assets/vendor/fonts/ */
 
 /* ============================================================
    Deep Teal & Clean Slate Palette Theme (Matching Login)
@@ -985,3 +985,37 @@ body {
 }
 
 #ndp-nepali-box table.ndp-table td.ndp-selected { background-color: var(--primary) !important; color: white !important; font-weight: bold; }
+
+/* ── Global Responsive Table & Content Visibility ───────────── */
+.table-responsive {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    border-radius: inherit;
+    scrollbar-width: thin;
+    position: relative;
+}
+
+.table-responsive::-webkit-scrollbar {
+    height: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+@media (max-width: 991px) {
+    .attendance-table,
+    .members-table {
+        min-width: 980px !important;
+    }
+}
+

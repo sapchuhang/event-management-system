@@ -176,6 +176,32 @@ require_once '../includes/header.php';
     .members-table tbody tr:hover td {
         background-color: rgba(20, 184, 166, 0.04);
     }
+
+    .members-table {
+        min-width: 980px;
+    }
+
+    @media (max-width: 768px) {
+        .members-toolbar {
+            padding: 0.75rem 1rem;
+        }
+
+        .members-table thead th,
+        .members-table tbody td {
+            padding: 0.5rem 0.5rem;
+            font-size: 0.82rem;
+        }
+
+        .members-table th:first-child,
+        .members-table td:first-child {
+            padding-left: 0.85rem !important;
+        }
+
+        .members-table th:last-child,
+        .members-table td:last-child {
+            padding-right: 0.85rem !important;
+        }
+    }
 </style>
 
 <div class="page-header mb-4">
@@ -226,7 +252,7 @@ require_once '../includes/header.php';
                     </div>
                 </form>
             </div>
-            <div class="col-md-6 col-lg-7 d-flex justify-content-md-end align-items-center gap-3">
+            <div class="col-md-6 col-lg-7 d-flex justify-content-md-end align-items-center gap-3 flex-wrap">
                 <div class="d-flex align-items-center gap-2">
                     <span class="text-muted small">Show</span>
                     <select class="form-select form-select-sm" style="width: 72px;" onchange="location = this.value;">
@@ -237,7 +263,8 @@ require_once '../includes/header.php';
                                 $params['search'] = $search;
                             $url = '?' . http_build_query($params);
                             ?>
-                            <option value="<?= htmlspecialchars($url) ?>" <?= $val == $perPage ? 'selected' : '' ?>><?= $val ?></option>
+                            <option value="<?= htmlspecialchars($url) ?>" <?= $val == $perPage ? 'selected' : '' ?>><?= $val ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                     <span class="text-muted small">entries</span>
@@ -251,7 +278,7 @@ require_once '../includes/header.php';
     </div>
 
     <!-- Table -->
-    <div class="mb-0">
+    <div class="table-responsive mb-0">
         <table class="table table-hover align-middle mb-0 members-table">
             <thead>
                 <tr>
