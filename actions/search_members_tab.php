@@ -107,7 +107,9 @@ $sql = "
         m.file_number, 
         m.status,
         a.attended_at,
-        e.title AS event_title
+        a.allowance_paid,
+        e.title AS event_title,
+        e.allowance_amount
     FROM members m
     LEFT JOIN attendance a ON m.id = a.member_id AND a.event_id = ?
     LEFT JOIN events e ON e.id = ?
@@ -126,21 +128,28 @@ try {
 
     // Format fields for frontend display
     $formatted = array_map(function ($item) {
+        $allowanceAmount = (float)($item['allowance_amount'] ?? 0.00);
+        if (!empty($item['event_title']) && isAgmEvent($item['event_title'])) {
+            $allowanceAmount = 500.00;
+        }
+
         return [
-            'id'           => (int)$item['id'],
-            'sn'           => $item['sn'] ?? '—',
-            'member_no'    => $item['member_no'],
-            'full_name'    => $item['full_name'],
-            'gender'       => $item['gender'] ?? 'Other',
-            'contact'      => $item['contact'] ?: '—',
-            'page_number'  => $item['page_number'] ?: '—',
-            'table_no'     => $item['table_no'] ?: '—',
-            'file_number'  => $item['file_number'] ?: '—',
-            'status'       => $item['status'],
-            'is_attended'  => !empty($item['attended_at']),
-            'attended_at'  => $item['attended_at'] ? bsTimeFromTimestamp($item['attended_at']) : null,
-            'attended_date'=> $item['attended_at'] ? bsToday() : null,
-            'event_title'  => $item['event_title'] ?? 'Current Event'
+            'id'              => (int)$item['id'],
+            'sn'              => $item['sn'] ?? '—',
+            'member_no'       => $item['member_no'],
+            'full_name'       => $item['full_name'],
+            'gender'          => $item['gender'] ?? 'Other',
+            'contact'         => $item['contact'] ?: '—',
+            'page_number'     => $item['page_number'] ?: '—',
+            'table_no'        => $item['table_no'] ?: '—',
+            'file_number'     => $item['file_number'] ?: '—',
+            'status'          => $item['status'],
+            'is_attended'     => !empty($item['attended_at']),
+            'attended_at'     => $item['attended_at'] ? bsTimeFromTimestamp($item['attended_at']) : null,
+            'attended_date'   => $item['attended_at'] ? bsToday() : null,
+            'allowance_amount'=> $allowanceAmount,
+            'allowance_paid'  => ($item['allowance_paid'] !== null) ? (float)$item['allowance_paid'] : null,
+            'event_title'     => $item['event_title'] ?? 'Current Event'
         ];
     }, $results);
 

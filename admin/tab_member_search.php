@@ -17,11 +17,12 @@ $tables = $tablesStmt->fetchAll(PDO::FETCH_COLUMN);
 $myAssignedTables = getAssignedTables($_SESSION['admin_id']);
 $primaryTable = !empty($myAssignedTables) ? $myAssignedTables[0] : '';
 
-// Calculate current user's table cash float for selected event
+// Calculate current user's / table's cash float for selected event
 $userAllocated = 0.00;
 $userPaid = 0.00;
 $userRemaining = 0.00;
 $currentEventAllowance = 0.00;
+$floatLabel = 'Your Float';
 
 if ($selectedEventId > 0) {
     $stmtEv = $pdo->prepare("SELECT title, allowance_amount FROM events WHERE id = ?");
@@ -34,8 +35,11 @@ if ($selectedEventId > 0) {
         }
     }
 
+    $currentAdminId = (int)$_SESSION['admin_id'];
+
+    // 1. Direct allocation for logged-in user
     $stmtCash = $pdo->prepare("SELECT COALESCE(allocated_amount, 0.00) FROM staff_event_cash WHERE event_id = ? AND user_id = ?");
-    $stmtCash->execute([$selectedEventId, $_SESSION['admin_id']]);
+    $stmtCash->execute([$selectedEventId, $currentAdminId]);
     $userAllocated = (float)$stmtCash->fetchColumn();
 
     $stmtPaid = $pdo->prepare("
@@ -44,9 +48,67 @@ if ($selectedEventId > 0) {
             (SELECT COALESCE(SUM(allowance_paid), 0.00) FROM guest_allowances WHERE event_id = ? AND marked_by = ?)
         )
     ");
-    $stmtPaid->execute([$selectedEventId, $_SESSION['admin_id'], $selectedEventId, $_SESSION['admin_id']]);
+    $stmtPaid->execute([$selectedEventId, $currentAdminId, $selectedEventId, $currentAdminId]);
     $userPaid = (float)$stmtPaid->fetchColumn();
     $userRemaining = $userAllocated - $userPaid;
+
+    if ($userAllocated > 0) {
+        $floatLabel = (!empty($primaryTable)) ? "Table $primaryTable Float" : "Your Float";
+    } else {
+        // 2. If user has no direct allocation, check assigned table float (for viewers/tablet kiosk)
+        if (!empty($primaryTable)) {
+            $cleanTable = preg_replace('/^table\s*/i', '', trim($primaryTable));
+            $stmtTableCash = $pdo->prepare("
+                SELECT COALESCE(SUM(sec.allocated_amount), 0.00) AS allocated,
+                       COALESCE(SUM(payouts.paid), 0.00) AS paid
+                FROM admin_users u
+                JOIN user_tables ut ON u.id = ut.user_id
+                LEFT JOIN staff_event_cash sec ON u.id = sec.user_id AND sec.event_id = ?
+                LEFT JOIN (
+                    SELECT marked_by, SUM(allowance_paid) as paid FROM (
+                        SELECT marked_by, allowance_paid FROM attendance WHERE event_id = ?
+                        UNION ALL
+                        SELECT marked_by, allowance_paid FROM guest_allowances WHERE event_id = ?
+                    ) p GROUP BY marked_by
+                ) payouts ON u.id = payouts.marked_by
+                WHERE (ut.table_no = ? OR ut.table_no = ?)
+            ");
+            $stmtTableCash->execute([$selectedEventId, $selectedEventId, $selectedEventId, $cleanTable, 'Table ' . $cleanTable]);
+            $tRow = $stmtTableCash->fetch(PDO::FETCH_ASSOC);
+            $tAllocated = (float)($tRow['allocated'] ?? 0.00);
+            $tPaid = (float)($tRow['paid'] ?? 0.00);
+
+            if ($tAllocated > 0) {
+                $userAllocated = $tAllocated;
+                $userPaid = $tPaid;
+                $userRemaining = $tAllocated - $tPaid;
+                $floatLabel = "Table $cleanTable Float";
+            }
+        }
+
+        // 3. Fallback: Show total event float if admin or no table allocation found
+        if ($userAllocated == 0) {
+            $stmtEvTotal = $pdo->prepare("
+                SELECT COALESCE(SUM(sec.allocated_amount), 0.00) AS allocated,
+                       COALESCE(SUM(payouts.paid), 0.00) AS paid
+                FROM staff_event_cash sec
+                LEFT JOIN (
+                    SELECT marked_by, SUM(allowance_paid) as paid FROM (
+                        SELECT marked_by, allowance_paid FROM attendance WHERE event_id = ?
+                        UNION ALL
+                        SELECT marked_by, allowance_paid FROM guest_allowances WHERE event_id = ?
+                    ) p GROUP BY marked_by
+                ) payouts ON sec.user_id = payouts.marked_by
+                WHERE sec.event_id = ?
+            ");
+            $stmtEvTotal->execute([$selectedEventId, $selectedEventId, $selectedEventId]);
+            $eRow = $stmtEvTotal->fetch(PDO::FETCH_ASSOC);
+            $userAllocated = (float)($eRow['allocated'] ?? 0.00);
+            $userPaid = (float)($eRow['paid'] ?? 0.00);
+            $userRemaining = $userAllocated - $userPaid;
+            $floatLabel = "Event Float";
+        }
+    }
 }
 
 $pageTitle = 'Member Search & Detail (Tab Device)';
@@ -591,14 +653,30 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
                         <?php endforeach; ?>
                     </select>
 
-                    <!-- Table Float Balance Pill -->
-                    <div class="badge bg-light text-dark border px-3 py-2 rounded-pill d-flex align-items-center gap-2" id="kioskCashFloatPill" title="Your table's remaining cash float">
-                        <i class="fas fa-wallet text-warning"></i>
-                        <span>
-                            Table <strong><?= htmlspecialchars($primaryTable ?: 'General') ?></strong> Float:
-                            <span class="fw-bold text-success font-monospace" id="kioskRemainingCash">NPR <?= number_format($userRemaining, 2) ?></span>
-                        </span>
+                    <!-- Cash Float & Remaining Amount Card (Hidden for Viewer role) -->
+                    <?php if (!isViewer()): ?>
+                    <div class="badge bg-white text-dark border shadow-sm px-3 py-2 rounded-3 d-flex align-items-center gap-2 text-wrap" id="kioskCashFloatPill" title="Cash Float Status">
+                        <div class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0" style="width: 34px; height: 34px; background: rgba(13, 148, 136, 0.12); color: #0d9488;">
+                            <i class="fas fa-wallet fs-6"></i>
+                        </div>
+                        <div class="text-start">
+                            <div class="text-muted text-uppercase" style="font-size: 0.68rem; font-weight: 700; letter-spacing: 0.5px;">
+                                <span id="kioskFloatLabel"><?= htmlspecialchars($floatLabel) ?></span> &bull; Remaining Amount
+                            </div>
+                            <div class="d-flex align-items-baseline gap-2">
+                                <span class="fw-bold <?= ($userRemaining >= $currentEventAllowance && $userRemaining > 0) ? 'text-success' : 'text-danger' ?> font-monospace fs-6" id="kioskRemainingCash">NPR <?= number_format($userRemaining, 2) ?></span>
+                                <small class="text-muted font-monospace" id="kioskAllocatedCash" style="font-size: 0.72rem;">/ NPR <?= number_format($userAllocated, 2) ?> alloc</small>
+                            </div>
+                        </div>
                     </div>
+                    <?php endif; ?>
+
+                    <?php if ($currentEventAllowance > 0): ?>
+                    <div class="badge bg-light text-secondary border px-2 py-2 rounded-3 d-none d-lg-flex align-items-center gap-1" id="kioskAllowancePill" title="Transportation Allowance per member">
+                        <i class="fas fa-coins text-warning"></i>
+                        <span style="font-size: 0.75rem;">Allowance: <strong class="text-dark font-monospace" id="kioskAllowanceAmount">NPR <?= number_format($currentEventAllowance, 2) ?></strong> / mbr</span>
+                    </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Spot Guest Allowance Action Buttons -->
@@ -764,6 +842,32 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
                                 <span class="tile-hint">Master list serial</span>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Allowance & Cash Float Remaining Section -->
+                    <div class="row g-3 mb-4">
+                        <div class="<?= isViewer() ? 'col-12' : 'col-md-6' ?>">
+                            <div class="kiosk-tile-giant" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-left: 5px solid #16a34a;">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="tile-label text-success mb-0"><i class="fas fa-hand-holding-usd me-1"></i> Transportation Allowance</span>
+                                    <span class="badge bg-success text-white px-2 py-1" id="badgeMemberAllowanceStatus" style="font-size: 0.72rem;">Payable</span>
+                                </div>
+                                <div class="tile-value text-success font-monospace" id="tileMemberAllowance">NPR <?= number_format($currentEventAllowance, 2) ?></div>
+                                <span class="tile-hint text-success" id="tileMemberAllowanceHint">Payable to member on check-in</span>
+                            </div>
+                        </div>
+                        <?php if (!isViewer()): ?>
+                        <div class="col-md-6">
+                            <div class="kiosk-tile-giant" style="background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%); border-left: 5px solid #0d9488;">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="tile-label text-teal mb-0"><i class="fas fa-wallet me-1"></i> <span id="cardRemainingFloatLabel"><?= htmlspecialchars($floatLabel) ?></span></span>
+                                    <span class="badge px-2 py-1" id="badgeFloatStatus" style="font-size: 0.72rem; color: #0d9488; background: #e6fffa; border: 1px solid #b2f5ea;">Remaining Amount</span>
+                                </div>
+                                <div class="tile-value text-teal font-monospace" id="cardRemainingFloatValue">NPR <?= number_format($userRemaining, 2) ?></div>
+                                <span class="tile-hint text-secondary" id="cardRemainingFloatHint">Available cash float for disbursements</span>
+                            </div>
+                        </div>
+                        <?php endif; ?>
                     </div>
 
                     <!-- Detailed Info & QR Code Section -->
@@ -1228,6 +1332,7 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
                         <span class="pill-badge pill-table"><i class="fas fa-chair"></i> Table ${escapeHtml(m.table_no || '—')}</span>
                         <span class="pill-badge pill-page"><i class="fas fa-book"></i> Page ${escapeHtml(m.page_number || '—')}</span>
                         ${m.contact && m.contact !== '—' ? '<span class="pill-badge pill-phone"><i class="fas fa-phone"></i> ' + highlightMatch(m.contact, query) + '</span>' : ''}
+                        ${parseFloat(m.allowance_amount || 0) > 0 ? '<span class="pill-badge" style="background:#ecfdf5; color:#047857; border:1px solid #a7f3d0;"><i class="fas fa-coins"></i> NPR ' + parseFloat(m.allowance_amount).toFixed(0) + '</span>' : ''}
                     </div>
                 `;
 
@@ -1352,6 +1457,13 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
             document.getElementById('detailGender').textContent = member.gender || '—';
             document.getElementById('detailContact').textContent = member.contact || '—';
 
+            // Populate Allowance Tile
+            const allowVal = parseFloat(member.allowance_amount || 0);
+            const allowTile = document.getElementById('tileMemberAllowance');
+            if (allowTile) {
+                allowTile.textContent = 'NPR ' + allowVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+
             // Populate Attendance Banner & Action Button
             updateAttendanceUI();
 
@@ -1397,11 +1509,27 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
             const attText = document.getElementById('detailAttendanceText');
             const bannerActionArea = document.getElementById('bannerActionArea');
             const btnMark = document.getElementById('btnMarkAttendance');
+            const badgeAllowanceStatus = document.getElementById('badgeMemberAllowanceStatus');
+            const hintAllowance = document.getElementById('tileMemberAllowanceHint');
+            const kioskRemEl = document.getElementById('kioskRemainingCash');
+            const currentRemText = kioskRemEl ? kioskRemEl.textContent : '';
+
+            const allowanceAmt = parseFloat(activeMemberData.allowance_paid !== null && activeMemberData.allowance_paid !== undefined ? activeMemberData.allowance_paid : (activeMemberData.allowance_amount || 0));
+            const formattedAllow = 'NPR ' + allowanceAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
             if (activeMemberData.is_attended) {
                 attBanner.className = 'mt-3 p-2 px-3 rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-2 small bg-success bg-opacity-75 text-white';
-                attText.innerHTML = `<strong><i class="fas fa-check-circle me-1"></i> Present:</strong> Checked in at <strong>${activeMemberData.attended_at || 'Just now'}</strong> (${activeMemberData.attended_date || 'Today'}) for <em>${escapeHtml(activeMemberData.event_title || '')}</em>`;
+                const floatSnippet = (!isViewerUser && currentRemText) ? ` &bull; Float Remaining: <strong class="font-monospace text-warning">${currentRemText}</strong>` : '';
+                attText.innerHTML = `<strong><i class="fas fa-check-circle me-1"></i> Present:</strong> Checked in at <strong>${activeMemberData.attended_at || 'Just now'}</strong> (${activeMemberData.attended_date || 'Today'}) &bull; Paid: <strong>${formattedAllow}</strong>${floatSnippet}`;
                 
+                if (badgeAllowanceStatus) {
+                    badgeAllowanceStatus.className = 'badge bg-success text-white px-2 py-1';
+                    badgeAllowanceStatus.innerHTML = '<i class="fas fa-check me-1"></i> Paid';
+                }
+                if (hintAllowance) {
+                    hintAllowance.innerHTML = `<i class="fas fa-check-circle text-success me-1"></i> Paid ${formattedAllow} on check-in`;
+                }
+
                 if (bannerActionArea) {
                     bannerActionArea.innerHTML = !isViewerUser 
                         ? `<button type="button" class="btn btn-sm btn-outline-light py-0 px-2 rounded-2 fw-semibold" id="btnBannerUndo"><i class="fas fa-undo me-1"></i>Undo</button>`
@@ -1421,8 +1549,17 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
                 }
             } else {
                 attBanner.className = 'mt-3 p-2 px-3 rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-2 small bg-white bg-opacity-15 text-white';
-                attText.innerHTML = `<i class="fas fa-clock opacity-75"></i> Not marked present yet for <em>${escapeHtml(activeMemberData.event_title || '')}</em>`;
+                const floatSnippet = (!isViewerUser && currentRemText) ? ` &bull; Float Remaining: <strong class="font-monospace text-warning">${currentRemText}</strong>` : '';
+                attText.innerHTML = `<i class="fas fa-clock opacity-75"></i> Not marked present yet &bull; Allowance: <strong>${formattedAllow}</strong>${floatSnippet}`;
                 
+                if (badgeAllowanceStatus) {
+                    badgeAllowanceStatus.className = 'badge bg-warning text-dark px-2 py-1';
+                    badgeAllowanceStatus.innerHTML = 'Payable';
+                }
+                if (hintAllowance) {
+                    hintAllowance.innerHTML = `Payable to member (${formattedAllow}) on check-in`;
+                }
+
                 if (bannerActionArea) {
                     bannerActionArea.innerHTML = '';
                 }
@@ -1462,6 +1599,9 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
                         position: 'top-end',
                         showConfirmButton: false
                     });
+                    if (data.remaining_cash !== undefined) {
+                        updateRemainingCashDisplay(data.remaining_cash);
+                    }
                     if (onSuccess) onSuccess(data);
                 } else {
                     Swal.fire({
@@ -1516,6 +1656,10 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
                             member.is_attended = false;
                             member.attended_at = null;
                             member.attended_date = null;
+                            member.allowance_paid = null;
+                            if (data.remaining_cash !== undefined) {
+                                updateRemainingCashDisplay(data.remaining_cash);
+                            }
                             Swal.fire({
                                 icon: 'info',
                                 title: 'Attendance Reverted',
@@ -1624,7 +1768,9 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
                 document.querySelectorAll('.quick-table-filter').forEach(b => b.classList.remove('active', 'btn-primary'));
                 this.classList.add('active');
                 
-                const tableVal = this.dataset.table;
+                const tableVal = this.dataset.table || '';
+                fetchCashFloat(eventSelector.value, tableVal);
+
                 if (tableVal) {
                     searchInput.value = tableVal;
                     btnClear.classList.remove('d-none');
@@ -1639,6 +1785,10 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
 
         // ── 8. Event Selector Change ──────────────────────────────
         eventSelector.addEventListener('change', function () {
+            const activeTableBtn = document.querySelector('.quick-table-filter.active');
+            const currentTable = activeTableBtn ? (activeTableBtn.dataset.table || '') : '';
+            fetchCashFloat(this.value, currentTable);
+
             if (activeMemberData) {
                 // Re-fetch member details with the newly selected event
                 fetch(`../actions/get_member_details.php?event_id=${this.value}&member_input=${encodeURIComponent(activeMemberData.member_no)}`, {
@@ -1652,6 +1802,8 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
                             is_attended: Boolean(data.member.attended_at),
                             attended_at: data.member.attended_at ? new Date(data.member.attended_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : null,
                             attended_date: data.member.attended_at ? new Date(data.member.attended_at).toLocaleDateString() : null,
+                            allowance_amount: data.member.allowance_amount,
+                            allowance_paid: data.member.allowance_paid,
                             event_title: data.member.event_title || 'Selected Event'
                         });
                     }
@@ -1751,24 +1903,79 @@ $pageTitle = 'Member Search & Detail (Tab Device)';
         }
 
         // ── 10. Live Cash Float Display Helper ─────────────────────
-        function updateRemainingCashDisplay(amount) {
+        function updateRemainingCashDisplay(amount, allocated, label) {
+            if (isViewerUser) return;
             const num = parseFloat(amount);
             if (isNaN(num)) return;
             const formatted = 'NPR ' + num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             const kioskRemainingEl = document.getElementById('kioskRemainingCash');
+            const kioskAllocatedEl = document.getElementById('kioskAllocatedCash');
+            const kioskLabelEl     = document.getElementById('kioskFloatLabel');
             const modalFloatHintEl = document.getElementById('modalRemainingFloatHint');
+            const cardRemainingVal = document.getElementById('cardRemainingFloatValue');
+            const cardRemainingLbl = document.getElementById('cardRemainingFloatLabel');
             
             if (kioskRemainingEl) {
                 kioskRemainingEl.textContent = formatted;
                 if (num < 500) {
-                    kioskRemainingEl.className = 'fw-bold text-danger font-monospace';
+                    kioskRemainingEl.className = 'fw-bold text-danger font-monospace fs-6';
                 } else {
-                    kioskRemainingEl.className = 'fw-bold text-success font-monospace';
+                    kioskRemainingEl.className = 'fw-bold text-success font-monospace fs-6';
                 }
+            }
+            if (kioskAllocatedEl && allocated !== undefined && allocated !== null) {
+                const numAlloc = parseFloat(allocated);
+                kioskAllocatedEl.textContent = '/ NPR ' + numAlloc.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' alloc';
+            }
+            if (kioskLabelEl && label) {
+                kioskLabelEl.textContent = label;
             }
             if (modalFloatHintEl) {
                 modalFloatHintEl.textContent = formatted;
             }
+            if (cardRemainingVal) {
+                cardRemainingVal.textContent = formatted;
+                if (num < 500) {
+                    cardRemainingVal.className = 'tile-value text-danger font-monospace';
+                } else {
+                    cardRemainingVal.className = 'tile-value text-teal font-monospace';
+                }
+            }
+            if (cardRemainingLbl && label) {
+                cardRemainingLbl.textContent = label;
+            }
+
+            // Keep member attendance banner in sync if member is currently shown
+            if (activeMemberData) {
+                const attBanner = document.getElementById('detailAttendanceBanner');
+                if (attBanner) {
+                    updateAttendanceUI();
+                }
+            }
+        }
+
+        // Fetch Cash Float & Remaining Amount from API
+        function fetchCashFloat(eventId, tableNo) {
+            if (isViewerUser) return;
+            const url = `../actions/get_tab_cash_float.php?event_id=${eventId}&table_no=${encodeURIComponent(tableNo || '')}`;
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        updateRemainingCashDisplay(data.remaining, data.allocated, data.label);
+                        if (data.allowance !== undefined) {
+                            const allowEl = document.getElementById('kioskAllowanceAmount');
+                            if (allowEl) {
+                                allowEl.textContent = 'NPR ' + parseFloat(data.allowance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            }
+                            const tileAllow = document.getElementById('tileMemberAllowance');
+                            if (tileAllow && (!activeMemberData || !activeMemberData.allowance_amount)) {
+                                tileAllow.textContent = 'NPR ' + parseFloat(data.allowance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            }
+                        }
+                    }
+                })
+                .catch(err => console.error("Error fetching cash float: ", err));
         }
 
         // ── 11. Spot Guest & Reporter Allowance Management ───────────

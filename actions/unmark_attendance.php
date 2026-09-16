@@ -51,7 +51,28 @@ if ($event_id && $member_id) {
 
         $stmt = $pdo->prepare("DELETE FROM attendance WHERE event_id = ? AND member_id = ?");
         $stmt->execute([$event_id, $member_id]);
-        echo json_encode(['success' => true, 'message' => 'Attendance unmarked successfully.']);
+
+        // Calculate updated remaining cash for the operator
+        $marked_by = (int)$_SESSION['admin_id'];
+        $stmtCash = $pdo->prepare("SELECT COALESCE(allocated_amount, 0.00) FROM staff_event_cash WHERE event_id = ? AND user_id = ?");
+        $stmtCash->execute([$event_id, $marked_by]);
+        $allocated = (float)$stmtCash->fetchColumn();
+
+        $stmtPaid = $pdo->prepare("
+            SELECT (
+                (SELECT COALESCE(SUM(allowance_paid), 0.00) FROM attendance WHERE event_id = ? AND marked_by = ?) +
+                (SELECT COALESCE(SUM(allowance_paid), 0.00) FROM guest_allowances WHERE event_id = ? AND marked_by = ?)
+            )
+        ");
+        $stmtPaid->execute([$event_id, $marked_by, $event_id, $marked_by]);
+        $paid = (float)$stmtPaid->fetchColumn();
+        $new_remaining = $allocated - $paid;
+
+        echo json_encode([
+            'success'        => true, 
+            'message'        => 'Attendance unmarked successfully.',
+            'remaining_cash' => $new_remaining
+        ]);
     } catch (PDOException $e) {
         http_response_code(500);
         echo json_encode(['success' => false, 'message' => 'Database error']);

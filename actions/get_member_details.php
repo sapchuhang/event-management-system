@@ -36,7 +36,7 @@ if (!$event_id) {
 
 $baseSelect = "
     SELECT m.id, m.sn, m.member_no, m.full_name, m.gender, m.contact, m.page_number, m.table_no, m.file_number, m.status, 
-           a.attended_at, e.title AS event_title, e.id AS event_id
+           a.attended_at, a.allowance_paid, e.title AS event_title, e.id AS event_id, e.allowance_amount
     FROM members m 
     LEFT JOIN attendance a ON m.id = a.member_id AND a.event_id = ?
     LEFT JOIN events e ON e.id = ?
@@ -143,6 +143,13 @@ if ($member) {
         echo json_encode(['success' => false, 'message' => 'Access Denied: Table restriction active.']);
         exit;
     }
+
+    $allowanceAmount = (float)($member['allowance_amount'] ?? 0.00);
+    if (!empty($member['event_title']) && isAgmEvent($member['event_title'])) {
+        $allowanceAmount = 500.00;
+    }
+    $member['allowance_amount'] = $allowanceAmount;
+    $member['allowance_paid'] = ($member['allowance_paid'] !== null) ? (float)$member['allowance_paid'] : null;
 
     echo json_encode([
         'success' => true,
