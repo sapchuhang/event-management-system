@@ -139,7 +139,8 @@ require_once '../includes/header.php';
             <?= htmlspecialchars($_SESSION['admin_username'] ?? 'Admin') ?>
         </h3>
         <p class="text-muted mb-0 mt-1" style="font-size:0.875rem;">Real-time analytics overview —
-            <?= bsToday('%M %d, %y') ?></p>
+            <?= bsToday('%M %d, %y') ?>
+        </p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
         <a href="reports.php" class="btn btn-outline-secondary btn-sm"><i class="fas fa-chart-bar"></i> Reports</a>
@@ -209,7 +210,7 @@ require_once '../includes/header.php';
         <div class="d-flex align-items-center gap-3">
             <div class="top-event-icon"><i class="fas fa-trophy"></i></div>
             <div>
-                <div class="top-event-sub">🏆 Top Attended Event</div>
+                <div class="top-event-sub">Top Attended Event</div>
                 <div class="top-event-title"><?= htmlspecialchars($topEventName) ?></div>
             </div>
             <div class="ms-auto text-end">
