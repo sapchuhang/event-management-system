@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // admin/event_cash.php
 require_once '../config/db.php';
 require_once '../includes/auth.php';
@@ -18,14 +18,15 @@ $stmt = $pdo->prepare("SELECT * FROM events WHERE id = ?");
 $stmt->execute([$event_id]);
 $event = $stmt->fetch();
 
-if ($event && isAgmEvent($event['title'])) {
-    $event['allowance_amount'] = 500.00;
-}
-
 if (!$event) {
     setFlashMessage('error', 'Event not found.');
     header('Location: events.php');
     exit;
+}
+
+// Override allowance for AGM events - done AFTER null check
+if (isAgmEvent($event['title'])) {
+    $event['allowance_amount'] = 500.00;
 }
 
 // Handle POST to update allocations
@@ -93,13 +94,13 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute(['event_id' => $event_id, 'event_id2' => $event_id, 'event_id3' => $event_id]);
 $users = $stmt->fetchAll();
 
-$pageTitle = 'Manage Staff Cash – ' . $event['title'];
+$pageTitle = 'Manage Staff Cash â€“ ' . $event['title'];
 require_once '../includes/header.php';
 ?>
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="fw-bold mb-1">Staff Cash Floats</h4>
-        <p class="text-muted mb-0"><?= htmlspecialchars($event['title']) ?> — <?= bsFormat($event['event_date']) ?></p>
+        <p class="text-muted mb-0"><?= htmlspecialchars($event['title']) ?> â€” <?= bsFormat($event['event_date']) ?></p>
     </div>
     <a href="events.php" class="btn btn-outline-secondary"><i class="fas fa-arrow-left me-2"></i> Back to Events</a>
 </div>

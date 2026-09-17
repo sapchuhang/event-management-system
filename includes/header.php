@@ -18,7 +18,7 @@
     <!-- Font Awesome (Local) -->
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/vendor/fontawesome/css/all.min.css">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
     <!-- Nepali Datepicker CSS (local) -->
     <link href="<?= BASE_URL ?>assets/css/vendor/nepaliDatePicker.min.css" rel="stylesheet" type="text/css">
     <!-- Chart.js (Local) -->

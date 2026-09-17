@@ -1,15 +1,28 @@
-# Disable directory browsing
+﻿# Disable directory browsing
 Options -Indexes
 
-# Leverage browser caching for local network speed
+# Leverage browser caching
 <IfModule mod_headers.c>
     <FilesMatch "\.(css|js|woff2|woff|ttf|eot|png|jpg|jpeg|gif|svg|ico)$">
         Header set Cache-Control "max-age=2592000, public"
     </FilesMatch>
+
+    # Security headers — market-ready hardening
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 
-# Protect sensitive files from browser access
-<FilesMatch "\.(sql|log|md|git.*)$">
+# Protect config directory from direct browser access
+<IfModule mod_authz_core.c>
+    <Files "db.php">
+        Require all denied
+    </Files>
+</IfModule>
+
+# Protect sensitive file types from browser access
+<FilesMatch "\.(sql|log|md|lock)$">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>

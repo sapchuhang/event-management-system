@@ -1,8 +1,8 @@
-<?php
+﻿<?php
 // actions/delete_member_action.php
 require_once '../config/db.php';
 require_once '../includes/auth.php';
-requireStaffOrAdmin();
+requireAdmin(); // Member deletion is destructive - admin only
 
 // Must be a POST request
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

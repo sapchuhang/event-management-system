@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once '../config/db.php';
 require_once '../includes/auth.php';
 requireStaffOrAdmin();
@@ -12,6 +12,7 @@ foreach ($events as &$e) {
 }
 unset($e);
 
+$pageTitle = 'Events';
 require_once '../includes/header.php';
 ?>
 <div class="d-flex justify-content-between align-items-center mb-4">

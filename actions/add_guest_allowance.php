@@ -109,10 +109,12 @@ if ($allowance_paid > 0) {
 }
 
 try {
-    // Generate sequential token number for this event: G-001, G-002, etc.
-    $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM guest_allowances WHERE event_id = ?");
-    $stmtCount->execute([$event_id]);
-    $guestIndex = (int)$stmtCount->fetchColumn() + 1;
+    $pdo->beginTransaction();
+
+    // Generate token from MAX(id)+1 inside transaction — avoids COUNT(*) race condition
+    $stmtMax = $pdo->prepare("SELECT COALESCE(MAX(id), 0) + 1 FROM guest_allowances WHERE event_id = ?");
+    $stmtMax->execute([$event_id]);
+    $guestIndex = (int)$stmtMax->fetchColumn();
     $token_no = 'G-' . str_pad((string)$guestIndex, 3, '0', STR_PAD_LEFT);
 
     // Insert record
@@ -134,6 +136,13 @@ try {
     ]);
 
     $newGuestId = (int)$pdo->lastInsertId();
+
+    // Use the actual DB id-based token for uniqueness guarantee
+    $token_no = 'G-' . str_pad((string)$newGuestId, 3, '0', STR_PAD_LEFT);
+    $pdo->prepare("UPDATE guest_allowances SET token_no = ? WHERE id = ?")->execute([$token_no, $newGuestId]);
+
+    $pdo->commit();
+
     $newRemaining = ($allowance_paid > 0) ? ($remaining_cash - $allowance_paid) : $remaining_cash;
 
     echo json_encode([
@@ -157,6 +166,9 @@ try {
         ]
     ]);
 } catch (PDOException $e) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     error_log("Database error saving guest allowance: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Database error while saving guest record.']);
