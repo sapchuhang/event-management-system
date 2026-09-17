@@ -20,4 +20,4 @@ error_log
 # Uploads directory - keep the directory structure but ignore user-uploaded files
 /uploads/**/*
 !/uploads/**/.gitkeep
-1
+
