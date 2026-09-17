@@ -42,6 +42,11 @@ $uniquePageNumbers = [];
 $totalRecords = 0;
 $totalPages = 1;
 
+$allowanceAmount = 0.00;
+$userAllocated = 0.00;
+$userPaid = 0.00;
+$userRemaining = 0.00;
+
 if ($event) {
     $restrictedTables = getRestrictedTables();
 
@@ -795,7 +800,7 @@ require_once '../includes/header.php';
                 
                 const alertBox = document.getElementById('cashFloatAlert');
                 if (alertBox) {
-                    const allowanceVal = <?= $allowanceAmount ?>;
+                    const allowanceVal = <?= (float)($allowanceAmount ?? 0) ?>;
                     if (parseFloat(remaining) < allowanceVal) {
                         alertBox.className = 'alert bg-danger-subtle text-danger border border-danger-subtle d-flex justify-content-between align-items-center mb-3 py-2 px-3 small';
                     } else {
